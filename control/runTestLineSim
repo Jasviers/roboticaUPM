@@ -1,0 +1,1 @@
+pyrobot -s PyrobotSimulator -w ./lineTestWorld.py -r PyrobotRobot60000.py -b ./BrainTestLine.py
