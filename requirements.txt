@@ -1,0 +1,5 @@
+pygame
+sklearn
+numpy
+opencv-python
+matplotlib
