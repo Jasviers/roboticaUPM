@@ -3,3 +3,4 @@ sklearn
 numpy
 opencv-python
 matplotlib
+scipy
