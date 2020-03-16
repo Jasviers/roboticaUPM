@@ -15,14 +15,14 @@ import numpy as np
 
 
 # Leo las imagenes de entrenamiento
-imNp = imread('linea.png')
-markImg = imread('lineaMarcada.png')
+imNp = imread('ln1.png')
+markImg = imread('lnMark1.png')
 
 # Preparo los datos de entrenamiento
 # saco todos los puntos marcados en rojo/verde/azul
-data_marca=imNp[np.all(markImg == [255,0,0],2)]
-data_fondo=imNp[np.all(markImg == [0,255,0],2)]
-data_linea=imNp[np.all(markImg == [0,0,255],2)]
+data_marca = imNp[np.all(markImg == [255,0,0],2)]
+data_fondo = imNp[np.all(markImg == [0,255,0],2)]
+data_linea = imNp[np.all(markImg == [0,0,255],2)]
 
 
 # Creo y entreno los segmentadores euclideos
@@ -32,7 +32,7 @@ segmMano = seg.segMano2()
 
 
 # Inicio la captura de imagenes
-capture = cv2.VideoCapture(...)
+capture = cv2.VideoCapture("../rsc/linea0.mp4")
 
 # Ahora clasifico el video
 while ():
