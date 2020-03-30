@@ -2,7 +2,7 @@
 
 Este directorio contiene código para ayudaros a segmentar una imagen.
 
-##Archivos
+## Archivos
 
 - select_pixels.py    Funciones para pintar encima de una imagen
 

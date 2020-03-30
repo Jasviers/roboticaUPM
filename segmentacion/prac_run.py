@@ -10,15 +10,21 @@ import cv2
 from scipy.misc import imread, imsave
 from matplotlib import pyplot as plt
 import numpy as np
-from sklearn import svm
-import time as tm
+from sklearn.neighbors import NearestCentroid
+from time import time
+
+# Medimos el tiempo
+start = time()
 
 # Creamos el clasificador
-clf = svm.SVC(kernel='poly', degree=3, gamma='auto', C=1.0)
+clf = NearestCentroid()
 
 # Leo las imagenes de entrenamiento
-imNp = imread('../rsc/imgs/ln1.png')
-markImg = imread('../rsc/imgs/lnMark1.png')
+imNp_aux = imread('../rsc/imgs/ln1.png', mode='RGB')
+imNp = cv2.cvtColor(imNp_aux, cv2.COLOR_BGR2RGB)
+markImg_aux = imread('../rsc/imgs/lnMark1.png', mode='RGB')
+markImg = cv2.cvtColor(markImg_aux, cv2.COLOR_BGR2RGB)
+
 
 # Preparo los datos de entrenamiento
 # saco todos los puntos marcados en rojo/verde/azul
@@ -26,56 +32,53 @@ data_marca = imNp[np.all(markImg == [255,0,0], 2)]
 data_fondo = imNp[np.all(markImg == [0,255,0], 2)]
 data_linea = imNp[np.all(markImg == [0,0,255], 2)]
 
-
-# Creo las etiquetas
-lbl_marca = np.zeros(data_marca.shape[0], dtype=np.uint8) + 2
+# Preparamos las etiquetas
 lbl_fondo = np.zeros(data_fondo.shape[0], dtype=np.uint8)
 lbl_linea = np.ones(data_linea.shape[0], dtype=np.uint8)
+lbl_marca = np.zeros(data_marca.shape[0], dtype=np.uint8) + 2
 
+# Entrenemos el modelo
+clf.fit(np.concatenate([data_fondo, data_linea, data_marca]), np.concatenate([lbl_fondo, lbl_linea, lbl_marca]))
 
-# Creo y entreno los segmentadores euclideos
-print("Entrenamos el modelo")
-segmEuc = clf.fit(np.concatenate([data_fondo, data_linea, data_marca]), np.concatenate([lbl_fondo, lbl_linea, lbl_marca]))
-#segmMano = seg.segMano2()
+print("Tiempo entrenamiento:") # Ojala f-strings
+print(time() - start)
 
+# Capturamos el video
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
 
 # Inicio la captura de imagenes
-capture = cv2.VideoCapture("../rsc/linea0.mp4")
+capture = cv2.VideoCapture("line0.mp4")
+count = 0
+ret, frame = capture.read()
+filename = 0
 
-# Ahora clasifico el video
-print("empieza el video")
-_, img = capture.read()
+# Clasificamos el video
+while ret:
 
-while _:
-    # voy a segmentar solo una de cada 25 imagenes y la muestro
-    cv2.imshow("Imagen", img)
+    if count%25 == 0:
+       count += 1
+       imNp = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+       imrgbn = np.rollaxis((np.rollaxis(imNp, 2) + 0.0)/np.sum(imNp, 2), 0, 3)[:,:,:2]
+       predicted_image = clf.predict(np.reshape(imNp, (imNp.shape[0]*imNp.shape[1], imNp.shape[2]))) # Creamos la prediccion y redimensionamos
 
-    # La pongo en formato numpy
-    imNp = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+       predicted_image = np.reshape(predicted_image, (imNp.shape[0], imNp.shape[1])) # Recuperamos las dimensiones
+       paleta = np.array([[0,0,255], [255,0,0], [0,255,0]], dtype=np.uint8)
 
-    # Segmento la imagen.
-    # Compute rgb normalization
-    imrgbn = np.rollaxis((np.rollaxis(imNp, 2) + 0.0)/np.sum(imNp, 2), 0, 3)[:,:,:2]
-    
-    labelsEu = clf.predict(imNp)
-    #labelsMa = segmMano.segmenta(imNp)
+       cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[predicted_image], cv2.COLOR_RGB2BGR))
 
+       cv2.imwrite('images/image%03d.png' % filename ,cv2.cvtColor(paleta[predicted_image], cv2.COLOR_RGB2BGR))
+       filename += 1
 
-    # Vuelvo a pintar la imagen
-    # genero la paleta de colores
-    paleta = np.array([[0,0,0], [0,0,255], [255,0,0], [0,255,0]], dtype=np.uint8)
-    # ahora pinto la imagen
-    cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[labelsEu], cv2.COLOR_RGB2BGR))
-    #cv2.imshow("Segmentacion Mano", cv2.cvtColor(paleta[labelsMa], cv2.COLOR_RGB2BGR))
+       out.write(cv2.cvtColor(paleta[palvideo], cv2.COLOR_RGB2BGR))
+    else:
+       count += 1
 
-    # Para pintar texto en una imagen
-    cv2.putText(imDraw,'Lineas: {0}'.format(len(convDefsLarge)),(15,20),cv2.FONT_HERSHEY_PLAIN,1,(255,0,0))
-    # Para pintar un circulo en el centro de la imagen
-    cv2.circle(imDraw, (imDraw.shape[1]/2,imDraw.shape[0]/2), 2, (0,255,0), -1)
+    ret, frame = capture.read()
 
-    # Guardo esta imagen para luego con todas ellas generar un video
-    cv2.imwrite()
+capture.release()
+out.release()
+cv2.destroyAllWindows()
 
-    _, img = capture.read()
-
-
+print("Tiempo total:")
+print(time()-start)
