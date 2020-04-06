@@ -1,3 +1,5 @@
+#!/usr/bin/env python2.7
+
 ####################################################
 # Esqueleto de programa para ejecutar el algoritmo de segmentacion.
 # Este programa primero entrena el clasificador con los datos de
@@ -14,7 +16,7 @@ from sklearn.neighbors import NearestCentroid
 from time import time
 import sys
 
-class Segmentador(Object):
+class Segmentador():
 
     def __init__(self):
         pass
@@ -52,7 +54,7 @@ class Segmentador(Object):
         # Inicio la captura de imagenes
         capture = cv2.VideoCapture(video)
         count = 0
-        ret, frame = capture.read()
+        ret, self.frame = capture.read()
         filename = 0
 
         # Clasificamos el video
@@ -60,7 +62,7 @@ class Segmentador(Object):
 
             if count%25 == 0:
                 count += 1
-                imNp = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                imNp = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
                 imrgbn = np.rollaxis((np.rollaxis(imNp, 2) + 0.0)/np.sum(imNp, 2), 0, 3)[:,:,:2]
                 predicted_image = self.clf.predict(np.reshape(imNp, (imNp.shape[0]*imNp.shape[1], imNp.shape[2]))) # Creamos la prediccion y redimensionamos
 
@@ -74,11 +76,11 @@ class Segmentador(Object):
                 cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(paleta[predicted_image], cv2.COLOR_RGB2BGR))
                 filename += 1
 
-                out.write(cv2.cvtColor(paleta[palvideo], cv2.COLOR_RGB2BGR))
+                out.write(cv2.cvtColor(paleta[predicted_image], cv2.COLOR_RGB2BGR))
             else:
                 count += 1
 
-            ret, frame = capture.read()
+            ret, self.frame = capture.read()
 
         capture.release()
         out.release()
@@ -86,20 +88,31 @@ class Segmentador(Object):
 
 
     def __line_identification(self, img, predImg):
-        linImg = (predImg==1).astype(uint8)[90:,:]*255
-        _, conts, _ = cv2.findCountours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-        cv2.drawContours(frame, contours, -1, (0, 255, 0), 3)
-        for i in range(len(contours)):
-            cont = contours[i]
-            for e in range(len(cont)):
-                point = cont[e]
-                height, width = frame.shape[:2]
+        cruce = []
+        linImg = (predImg==1).astype(np.uint8)*255
+        contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        cv2.drawContours(self.frame, contours, -1, (0, 255, 0), 3)
+        for cont in contours:
+            if len(cont) > 100: cruce.append(cont)
+            for point in cont:
+                height, width = self.frame.shape[:2]
                 if (point[0][0]==0) or (point[0][0]==width-1) or (point[0][1]==0) or (point[0][1]==height-1):
-                    cv2.circle(frame,tuple(point[0]),3,[0,0,255],-1)
+                    cv2.circle(self.frame, tuple(point[0]), 3, [0,0,255], -1)
+        if len(cruce) > 2:
+            cv2.putText(self.frame,'Lineas: {0}'.format(len(cruce)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+        else:
+            pass
+
+        cv2.waitKey(177) # Comentarlo para mejorar tiempos
+        cv2.imshow("contorno", self.frame)
+
+    def __arrow_direction(self):
+        pass
 
 if __name__ == "__main__":
     start = time()
     seg = Segmentador()
+    print("Tiempo al crear el segmentador: {}".format(time() - start))
     seg.clf_create(sys.argv[1], sys.argv[2])
     print("Tiempo del clasificador: {}".format(time() - start))
     seg.video_create(sys.argv[3])
