@@ -73,7 +73,6 @@ class Segmentador():
                 paleta = np.array([[0,0,255], [255,0,0], [0,255,0]], dtype=np.uint8)
 
                 self.__line_identification()
-                sleep(3)
 
                 cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
 
@@ -100,13 +99,22 @@ class Segmentador():
             if len(cont) > 100: cruce.append(cont)
             for point in cont:
                 height, width = self.frame.shape[:2]
-                print("salida: {} entrada: {})".format(point[0][0], point[0][1]))
                 if (point[0][0]==0) or (point[0][0]==width-1) or (point[0][1]==0) or (point[0][1]==height-1):
                     cv2.circle(self.frame, tuple(point[0]), 3, [0,0,255], -1)
         if len(cruce) > 2:
             cv2.putText(self.frame,'Cruece de {0} salidas'.format(len(cruce)-1), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
         else:
-            pass
+            moments = cv2.moments(max(contours, key=cv2.contourArea))
+            x = int(moments['m10']/moments['m00'])
+            if x >= 120:
+                cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                return -1.0
+            elif 120 > x and x > 50:
+                cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                return 0
+            elif 50 >= x:
+                cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                return 1.0
 
         cv2.waitKey(177) # Comentarlo para mejorar tiempos
         cv2.imshow("contorno", self.frame)
@@ -133,10 +141,10 @@ class Segmentador():
                     right[1] += 1
         if left[0] >= 1 and left[1] >= 1:
             cv2.putText(self.frame, 'Flecha izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            return 1
+            return 1.0
         elif right[1] >= 1 and right[0] >= 1:
             cv2.putText(self.frame, "Flecha derecha", (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            return 2
+            return -1.0
         return 0
 
 
