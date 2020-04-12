@@ -13,13 +13,15 @@ from scipy.misc import imread, imsave
 from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.neighbors import NearestCentroid
-from time import time
+from time import time, sleep
 import sys
+
 
 class Segmentador():
 
     def __init__(self):
         pass
+
 
     def clf_create(self, img, mkImg):
         # Creamos el clasificador
@@ -46,6 +48,7 @@ class Segmentador():
         # Entrenemos el modelo
         self.clf.fit(np.concatenate([data_fondo, data_linea, data_marca]), np.concatenate([lbl_fondo, lbl_linea, lbl_marca]))
 
+
     def video_create(self, video):
         # Capturamos el video
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -66,17 +69,18 @@ class Segmentador():
                 imrgbn = np.rollaxis((np.rollaxis(imNp, 2) + 0.0)/np.sum(imNp, 2), 0, 3)[:,:,:2]
                 predicted_image = self.clf.predict(np.reshape(imNp, (imNp.shape[0]*imNp.shape[1], imNp.shape[2]))) # Creamos la prediccion y redimensionamos
 
-                predicted_image = np.reshape(predicted_image, (imNp.shape[0], imNp.shape[1])) # Recuperamos las dimensiones
+                self.predImg = np.reshape(predicted_image, (imNp.shape[0], imNp.shape[1])) # Recuperamos las dimensiones
                 paleta = np.array([[0,0,255], [255,0,0], [0,255,0]], dtype=np.uint8)
-                
-                self.__line_identification(imNp, predicted_image)
 
-                cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[predicted_image], cv2.COLOR_RGB2BGR))
+                self.__line_identification()
+                sleep(3)
 
-                cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(paleta[predicted_image], cv2.COLOR_RGB2BGR))
+                cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
+
+                cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
                 filename += 1
 
-                out.write(cv2.cvtColor(paleta[predicted_image], cv2.COLOR_RGB2BGR))
+                out.write(cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
             else:
                 count += 1
 
@@ -87,27 +91,54 @@ class Segmentador():
         cv2.destroyAllWindows()
 
 
-    def __line_identification(self, img, predImg):
+    def __line_identification(self):
         cruce = []
-        linImg = (predImg==1).astype(np.uint8)*255
+        linImg = (self.predImg==1).astype(np.uint8)*255
         contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         cv2.drawContours(self.frame, contours, -1, (0, 255, 0), 3)
         for cont in contours:
             if len(cont) > 100: cruce.append(cont)
             for point in cont:
                 height, width = self.frame.shape[:2]
+                print("salida: {} entrada: {})".format(point[0][0], point[0][1]))
                 if (point[0][0]==0) or (point[0][0]==width-1) or (point[0][1]==0) or (point[0][1]==height-1):
                     cv2.circle(self.frame, tuple(point[0]), 3, [0,0,255], -1)
         if len(cruce) > 2:
-            cv2.putText(self.frame,'Lineas: {0}'.format(len(cruce)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+            cv2.putText(self.frame,'Cruece de {0} salidas'.format(len(cruce)-1), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
         else:
             pass
 
         cv2.waitKey(177) # Comentarlo para mejorar tiempos
         cv2.imshow("contorno", self.frame)
 
-    def __arrow_direction(self):
-        pass
+
+    def __arrow_direction(self): # Esta por terminar
+        linImg = (self.predImg==2).astype(np.uint8)*255
+        contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        cv2.drawContours(self.frame, contours, -1, (0, 255, 0), 3)
+        gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+        lines = cv2.HoughLines(edges, 1, np.pi/180, 20)
+        left, right = [0, 0], [0, 0]
+        for i in contours:
+            th, rh = i[0][1], i[0][0]
+            if (np.round(th, 2) >= 1.0 and np.round(th, 2) <= 1.1) or (np.round(th, 2) >= 2.0 and np.round(th, 2) <= 2.1):
+                if rh >= 20 and rh <= 30:
+                    left[0] += 1
+                elif rh >= 60 and rh <= 65:
+                    left[1] += 1
+                elif rh >= -73 and rh <= -57:
+                    right[0] += 1
+                elif rh >= 148 and rh <= 176:
+                    right[1] += 1
+        if left[0] >= 1 and left[1] >= 1:
+            cv2.putText(self.frame, 'Flecha izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+            return 1
+        elif right[1] >= 1 and right[0] >= 1:
+            cv2.putText(self.frame, "Flecha derecha", (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+            return 2
+        return 0
+
 
 if __name__ == "__main__":
     start = time()
