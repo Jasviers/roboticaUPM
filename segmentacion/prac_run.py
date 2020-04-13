@@ -102,22 +102,23 @@ class Segmentador():
                 if (point[0][0]==0) or (point[0][0]==width-1) or (point[0][1]==0) or (point[0][1]==height-1):
                     cv2.circle(self.frame, tuple(point[0]), 3, [0,0,255], -1)
         if len(cruce) > 2:
-            cv2.putText(self.frame,'Cruece de {0} salidas'.format(len(cruce)-1), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+            cv2.putText(self.predImg,'Cruece de {0} salidas'.format(len(cruce)-1), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+            return -1
         else:
             moments = cv2.moments(max(contours, key=cv2.contourArea))
             x = int(moments['m10']/moments['m00'])
             if x >= 120:
-                cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                cv2.putText(self.predImg,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                 return -1.0
             elif 120 > x and x > 50:
-                cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                cv2.putText(self.predImg,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                 return 0
             elif 50 >= x:
-                cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                cv2.putText(self.predImg,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                 return 1.0
-
-        cv2.waitKey(177) # Comentarlo para mejorar tiempos
-        cv2.imshow("contorno", self.frame)
+        #cv2.waitKey(177) # Comentarlo para mejorar tiempos
+        #cv2.imshow("contorno", self.frame)
+        return 0
 
 
     def __arrow_direction(self): # Esta por terminar
