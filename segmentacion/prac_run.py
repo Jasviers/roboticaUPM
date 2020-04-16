@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.neighbors import NearestCentroid
 from time import time, sleep
 import sys
+import identificar_bifurcacion as bif
 
 
 class Segmentador():
@@ -59,13 +60,19 @@ class Segmentador():
         count = 0
         ret, self.frame = capture.read()
         filename = 0
+        self.centro=()
+
 
         # Clasificamos el video
         while ret:
 
-            if count%25 == 0:
+            if count%5 == 0:
                 count += 1
+                height, width = self.frame.shape[:2]
+                self.frame = self.frame[70:height, 0:width]
+                cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
                 imNp = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+                self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
                 imrgbn = np.rollaxis((np.rollaxis(imNp, 2) + 0.0)/np.sum(imNp, 2), 0, 3)[:,:,:2]
                 predicted_image = self.clf.predict(np.reshape(imNp, (imNp.shape[0]*imNp.shape[1], imNp.shape[2]))) # Creamos la prediccion y redimensionamos
 
@@ -74,9 +81,9 @@ class Segmentador():
 
                 self.__line_identification()
 
-                cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
+                cv2.imshow("Segmentacion Euclid", cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
 
-                cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
+                cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
                 filename += 1
 
                 out.write(cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
@@ -91,30 +98,59 @@ class Segmentador():
 
 
     def __line_identification(self):
-        cruce = []
+        camino, salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
+        cv2.circle(self.frame, self.centro, 3, [0,0,255], -1)
+
         linImg = (self.predImg==1).astype(np.uint8)*255
-        contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-        cv2.drawContours(self.frame, contours, -1, (0, 255, 0), 3)
-        for cont in contours:
-            if len(cont) > 100: cruce.append(cont)
-            for point in cont:
-                height, width = self.frame.shape[:2]
-                if (point[0][0]==0) or (point[0][0]==width-1) or (point[0][1]==0) or (point[0][1]==height-1):
-                    cv2.circle(self.frame, tuple(point[0]), 3, [0,0,255], -1)
-        if len(cruce) > 2:
-            cv2.putText(self.predImg,'Cruece de {0} salidas'.format(len(cruce)-1), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+        ret, thresh = cv2.threshold(linImg,50,255,0)
+        _,contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        #cv2.drawContours(self.frame, contours, -1, (255, 0, 0), 1)
+        for cont in contours:#identificamos el contorno que determina nuestro camino
+           if cv2.pointPolygonTest(cont, self.centro, False)== 0.0:
+              camino=cont
+        cv2.drawContours(self.frame, camino, -1, (0, 255, 0), 1)
+
+        for point in salidas:
+              cv2.circle(self.frame, point, 3, [255,0,0], -1)
+        defects=[]
+        if len(camino)>0:
+           hull = cv2.convexHull(camino)
+           cv2.drawContours(self.frame, [hull], -1, (255, 0, 0), 2)
+           hull = cv2.convexHull(camino,returnPoints=False)
+           defects = cv2.convexityDefects(camino,hull)
+        if len(salidas)>1:
+            cv2.putText(self.frame,'Cruce de {0} salidas'.format(len(salidas)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
             return -1
-        else:
+        elif len(salidas)==1:
+           for i in range(defects.shape[0]):
+              start,end,f,d = defects[i,0]
+              start = tuple(camino[start][0])
+              end = tuple(camino[end][0])
+              if i==0 or d>dis: 
+                 far = tuple(camino[f][0])
+                 dis = d
+                 sdef = start
+                 edef=end
+           #cv2.line(self.frame,sdef,edef,[0,0,255],2)
+           #far = tuple(camino[far][0])
+           cv2.circle(self.frame, tuple(far), 3, [255,0,0], -1)
+           if dis>1000 and salidas[0][0]-self.centro[0] < -5:
+              cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+           elif dis>1000 and salidas[0][0]-self.centro[0]> 5:
+              cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+           else:
+              cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+        elif (len(contours) > 0):
             moments = cv2.moments(max(contours, key=cv2.contourArea))
             x = int(moments['m10']/moments['m00'])
             if x >= 120:
-                cv2.putText(self.predImg,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                #cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                 return -1.0
             elif 120 > x and x > 50:
-                cv2.putText(self.predImg,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                #cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                 return 0
             elif 50 >= x:
-                cv2.putText(self.predImg,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+                #cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                 return 1.0
         #cv2.waitKey(177) # Comentarlo para mejorar tiempos
         #cv2.imshow("contorno", self.frame)
@@ -123,7 +159,7 @@ class Segmentador():
 
     def __arrow_direction(self): # Esta por terminar
         linImg = (self.predImg==2).astype(np.uint8)*255
-        contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        _,contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         cv2.drawContours(self.frame, contours, -1, (0, 255, 0), 3)
         gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 50, 150, apertureSize=3)
@@ -157,4 +193,3 @@ if __name__ == "__main__":
     print("Tiempo del clasificador: {}".format(time() - start))
     seg.video_create(sys.argv[3])
     print("Tiempo total: {}".format(time() - start))
-

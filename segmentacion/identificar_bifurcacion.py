@@ -9,86 +9,109 @@ def existen_bifurcaciones(img,imgMrk, centro):
    linImg = (imgMrk==1).astype(np.uint8)*255
    _,contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)#sacamos los contornos de la linea
    bordes=[]
+   bordeN=[]
+   bordeS=[]
+   bordeW=[]
+   bordeE=[]
    for cont in contours:#aqui vamos a guardar las distintas salidas y el borde de la imagen por el que salen
-      bordeN=[]
-      bordeS=[]
-      bordeW=[]
-      bordeE=[]
       for point in cont:
          height, width = img.shape[:2]
          if (point[0][0]==0):  bordeW.append(tuple(point[0]))
          elif (point[0][0]==width-1):   bordeE.append(tuple(point[0]))
          elif (point[0][1]==0):   bordeN.append(tuple(point[0]))
          elif (point[0][1]==height-1):   bordeS.append(tuple(point[0]))
-      bordeN.sort()
-      bordeS.sort()
-      bordeW.sort()
-      bordeE.sort()
-      #el siguiente codigo se encarga de poder separar los puntos de cada borde en distintos bordes
-      if len(bordeW)>0:
-         definitiva=[]
-         auxiliar=[]
-         for point in bordeW:
-            if len(auxiliar)<1:
-               auxiliar.append(point)
-            elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
-               auxiliar.append(point)
-            else:
-               definitiva.append(auxiliar)
-               auxiliar=[]
-               auxiliar.append(point)
-         definitiva.append(auxiliar)
-         for lista in definitiva:
-            bordes.append(lista)
+   bordeN.sort()
+   bordeS.sort()
+   bordeW.sort()
+   bordeE.sort()
+   #el siguiente codigo se encarga de poder separar los puntos de cada borde en distintos bordes
+   if len(bordeW)>0:
+      definitiva=[]
+      auxiliar=[]
+      for point in bordeW:
+         if len(auxiliar)<1:
+            auxiliar.append(point)
+         elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
+            auxiliar.append(point)
+         else:
+            definitiva.append(auxiliar)
+            auxiliar=[]
+            auxiliar.append(point)
+      definitiva.append(auxiliar)
+      for lista in definitiva:
+         bordes.append(lista)
 
-      if len(bordeE)>0:
-         definitiva=[]
-         auxiliar=[]
-         for point in bordeE:
-            if len(auxiliar)<1:
-               auxiliar.append(point)
-            elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
-               auxiliar.append(point)
-            else:
-               definitiva.append(auxiliar)
-               auxiliar=[]
-               auxiliar.append(point)
-         definitiva.append(auxiliar)
-         for lista in definitiva:
-            bordes.append(lista)
+   if len(bordeE)>0:
+      definitiva=[]
+      auxiliar=[]
+      for point in bordeE:
+         if len(auxiliar)<1:
+            auxiliar.append(point)
+         elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
+            auxiliar.append(point)
+         else:
+            definitiva.append(auxiliar)
+            auxiliar=[]
+            auxiliar.append(point)
+      definitiva.append(auxiliar)
+      for lista in definitiva:
+         bordes.append(lista)
 
-      if len(bordeN)>0:
-         definitiva=[]
-         auxiliar=[]
-         for point in bordeN:
-            if len(auxiliar)<1:
-               auxiliar.append(point)
-            elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
-               auxiliar.append(point)
-            else:
-               definitiva.append(auxiliar)
-               auxiliar=[]
-               auxiliar.append(point)
-         definitiva.append(auxiliar)
-         for lista in definitiva:
-            bordes.append(lista)
+   if len(bordeN)>0:
+      definitiva=[]
+      auxiliar=[]
+      for point in bordeN:
+         if len(auxiliar)<1:
+            auxiliar.append(point)
+         elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
+            auxiliar.append(point)
+         else:
+            definitiva.append(auxiliar)
+            auxiliar=[]
+            auxiliar.append(point)
+      definitiva.append(auxiliar)
+      for lista in definitiva:
+         bordes.append(lista)
 
-      if len(bordeS)>0:
-         definitiva=[]
-         auxiliar=[]
-         for point in bordeS:
-            if len(auxiliar)<1:
-               auxiliar.append(point)
-            elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
-               auxiliar.append(point)
-            else:
-               definitiva.append(auxiliar)
-               auxiliar=[]
-               auxiliar.append(point)
-         definitiva.append(auxiliar)
-         for lista in definitiva:
-            bordes.append(lista)
-   
+   if len(bordeS)>0:
+      definitiva=[]
+      auxiliar=[]
+      for point in bordeS:
+         if len(auxiliar)<1:
+            auxiliar.append(point)
+         elif math.sqrt(pow((point[0]-auxiliar[-1][0]),2)+pow((point[1]-auxiliar[-1][1]),2))<5:
+            auxiliar.append(point)
+         else:
+            definitiva.append(auxiliar)
+            auxiliar=[]
+            auxiliar.append(point)
+      definitiva.append(auxiliar)
+      for lista in definitiva:
+         bordes.append(lista)
+
+   bordes.sort()
+   definitiva=[]
+   auxiliar=[]
+   for i in range(0,len(bordes)):
+      borde=bordes[i]
+      if all(elem in auxiliar  for elem in borde):  continue
+      auxiliar=[]
+      flag = True
+      if i == len(bordes)-1:  flag=False
+      for point in borde:
+         auxiliar.append(point)
+         if flag:
+            for point2 in bordes[i+1]:
+               if math.sqrt(pow((point[0]-point2[0]),2)+pow((point[1]-point2[1]),2))<3:
+                  for point2 in bordes[i+1]:  auxiliar.append(point2)
+                  flag=False
+                  break
+      auxiliar.sort()
+      definitiva.append(auxiliar)
+   definitiva.sort()
+   bordes=definitiva
+         
+         
    camino = []
    result = 0
    salidas = []
