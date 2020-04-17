@@ -66,7 +66,7 @@ class Segmentador():
         # Clasificamos el video
         while ret:
 
-            if count%5 == 0:
+            if count%3 == 0:
                 count += 1
                 height, width = self.frame.shape[:2]
                 self.frame = self.frame[70:height, 0:width]
@@ -81,7 +81,7 @@ class Segmentador():
 
                 self.__line_identification()
 
-                cv2.imshow("Segmentacion Euclid", cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
+                #cv2.imshow("Segmentacion Euclid", cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
 
                 cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
                 filename += 1
@@ -98,24 +98,25 @@ class Segmentador():
 
 
     def __line_identification(self):
-        camino, salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
+        camino=[]
+        salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
         cv2.circle(self.frame, self.centro, 3, [0,0,255], -1)
 
         linImg = (self.predImg==1).astype(np.uint8)*255
         ret, thresh = cv2.threshold(linImg,50,255,0)
         _,contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-        #cv2.drawContours(self.frame, contours, -1, (255, 0, 0), 1)
         for cont in contours:#identificamos el contorno que determina nuestro camino
            if cv2.pointPolygonTest(cont, self.centro, False)== 0.0:
               camino=cont
-        cv2.drawContours(self.frame, camino, -1, (0, 255, 0), 1)
+
 
         for point in salidas:
               cv2.circle(self.frame, point, 3, [255,0,0], -1)
         defects=[]
         if len(camino)>0:
-           hull = cv2.convexHull(camino)
-           cv2.drawContours(self.frame, [hull], -1, (255, 0, 0), 2)
+           cv2.drawContours(self.frame, camino, -1, (0, 255, 0), 1)
+           #hull = cv2.convexHull(camino)
+           #cv2.drawContours(self.frame, [hull], -1, (255, 0, 0), 2)
            hull = cv2.convexHull(camino,returnPoints=False)
            defects = cv2.convexityDefects(camino,hull)
         if len(salidas)>1:
@@ -133,25 +134,37 @@ class Segmentador():
                  edef=end
            #cv2.line(self.frame,sdef,edef,[0,0,255],2)
            #far = tuple(camino[far][0])
-           cv2.circle(self.frame, tuple(far), 3, [255,0,0], -1)
-           if dis>1000 and salidas[0][0]-self.centro[0] < -5:
+           #cv2.circle(self.frame, tuple(far), 3, [255,0,0], -1)
+           if dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))>0:
               cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-           elif dis>1000 and salidas[0][0]-self.centro[0]> 5:
+              vel = (170-salidas[0][1])*100
+              cv2.putText(self.frame,'Velocidad = {0} %'.format(vel/170), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              giro = (abs(160-salidas[0][0]))*100
+              cv2.putText(self.frame,'Velocidad de giro = {0} %'.format(giro/160), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+           elif dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))<0:
               cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              vel = (170-salidas[0][1])*100
+              cv2.putText(self.frame,'Velocidad = {0} %'.format(vel/170), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              giro = (abs(160-salidas[0][0]))*100
+              cv2.putText(self.frame,'Velocidad de giro = {0} %'.format(giro/160), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
            else:
               cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-        elif (len(contours) > 0):
-            moments = cv2.moments(max(contours, key=cv2.contourArea))
-            x = int(moments['m10']/moments['m00'])
-            if x >= 120:
+              vel = (170-salidas[0][1])*100
+              cv2.putText(self.frame,'Velocidad = {0} %'.format(vel/170), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              giro = (abs(160-salidas[0][0]))*100
+              cv2.putText(self.frame,'Velocidad de giro = {0} %'.format(giro/160), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+        #elif (len(contours) > 0):
+            #moments = cv2.moments(max(contours, key=cv2.contourArea))
+            #x = int(moments['m10']/moments['m00'])
+            #if x >= 120:
                 #cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-                return -1.0
-            elif 120 > x and x > 50:
+            #    return -1.0
+            #elif 120 > x and x > 50:
                 #cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-                return 0
-            elif 50 >= x:
+            #    return 0
+            #elif 50 >= x:
                 #cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-                return 1.0
+            #    return 1.0
         #cv2.waitKey(177) # Comentarlo para mejorar tiempos
         #cv2.imshow("contorno", self.frame)
         return 0

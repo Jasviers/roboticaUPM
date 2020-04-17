@@ -170,5 +170,5 @@ def existen_bifurcaciones(img,imgMrk, centro):
    puntos_salida[:] = [x for x in puntos_salida if len(contornolinea)>0 and abs(cv2.pointPolygonTest(contornolinea, x, True))<5]
 
    #devuelvo contorno del camino, salidas y centro
-   return contornolinea, puntos_salida, nuevo_centro
+   return puntos_salida, nuevo_centro
 
