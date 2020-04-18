@@ -13,41 +13,57 @@ from scipy.misc import imread, imsave
 from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.neighbors import NearestCentroid
+from sklearn.externals import joblib
 from time import time, sleep
-import sys
+import sys, os, pickle
 import identificar_bifurcacion as bif
 
 
-class Segmentador():
+class Segmentador(object):
+
 
     def __init__(self):
         pass
 
 
-    def clf_create(self, img, mkImg):
+    def clf_create(self, imgPath, mkImgPath):
         # Creamos el clasificador
         self.clf = NearestCentroid()
+        data, lbls = None, None
 
-        # Leo las imagenes de entrenamiento
-        imNp_aux = imread(img, mode='RGB')
-        self.imNp = cv2.cvtColor(imNp_aux, cv2.COLOR_BGR2RGB)
-        markImg_aux = imread(mkImg, mode='RGB')
-        self.markImg = cv2.cvtColor(markImg_aux, cv2.COLOR_BGR2RGB)
+        for i, j in zip(sorted(os.listdir(imgPath)), sorted(os.listdir(mkImgPath))):
+            imNp_aux = imread(i)
+            markImg_aux = imread(j)
+            self.imNp = cv2.cvtColor(imNp_aux, cv2.COLOR_BGR2RGB)
+            self.markImg = cv2.cvtColor(markImg_aux, cv2.COLOR_BGR2RGB)
+
+            # Preparo los datos de entrenamiento
+            # saco todos los puntos marcados en rojo/verde/azul
+            data_marca = self.imNp[np.all(self.markImg == [255,0,0], 2)]
+            data_fondo = self.imNp[np.all(self.markImg == [0,255,0], 2)]
+            data_linea = self.imNp[np.all(self.markImg == [0,0,255], 2)]
+
+            # Preparamos las etiquetas
+            lbl_fondo = np.zeros(data_fondo.shape[0], dtype=np.uint8)
+            lbl_linea = np.ones(data_linea.shape[0], dtype=np.uint8)
+            lbl_marca = np.zeros(data_marca.shape[0], dtype=np.uint8) + 2
+
+            if data is None or lbls is None:
+                data = np.concatenate([data_fondo, data_linea, data_marca])
+                lbls = np.concatenate([lbl_fondo, lbl_linea, lbl_marca])
+            else:
+                data_aux = np.concatenate([data_fondo, data_linea, data_marca])
+                data = np.concatenate([data, data_aux])
+                lbls_aux = np.concatenate([lbl_fondo, lbl_linea, lbl_marca])
+                lbls = np.concatenate([lbls, lbls_aux])
+
+       # Entrenemos el modelo
+        self.clf.fit(data, lbls)
+        joblib.dump(clf, 'clasificador.pkl')
 
 
-        # Preparo los datos de entrenamiento
-        # saco todos los puntos marcados en rojo/verde/azul
-        data_marca = self.imNp[np.all(self.markImg == [255,0,0], 2)]
-        data_fondo = self.imNp[np.all(self.markImg == [0,255,0], 2)]
-        data_linea = self.imNp[np.all(self.markImg == [0,0,255], 2)]
-
-        # Preparamos las etiquetas
-        lbl_fondo = np.zeros(data_fondo.shape[0], dtype=np.uint8)
-        lbl_linea = np.ones(data_linea.shape[0], dtype=np.uint8)
-        lbl_marca = np.zeros(data_marca.shape[0], dtype=np.uint8) + 2
-
-        # Entrenemos el modelo
-        self.clf.fit(np.concatenate([data_fondo, data_linea, data_marca]), np.concatenate([lbl_fondo, lbl_linea, lbl_marca]))
+    def clf_load(self):
+        self.clf = joblib.load('clasificador.pkl')
 
 
     def video_create(self, video):
@@ -127,7 +143,7 @@ class Segmentador():
               start,end,f,d = defects[i,0]
               start = tuple(camino[start][0])
               end = tuple(camino[end][0])
-              if i==0 or d>dis: 
+              if i==0 or d>dis:
                  far = tuple(camino[f][0])
                  dis = d
                  sdef = start
@@ -202,7 +218,12 @@ if __name__ == "__main__":
     start = time()
     seg = Segmentador()
     print("Tiempo al crear el segmentador: {}".format(time() - start))
-    seg.clf_create(sys.argv[1], sys.argv[2])
+    if os.path.isfile('clasificador.pkl'):
+        seg.clf_load()
+    else:
+        seg.clf_create(sys.argv[1], sys.argv[2])
     print("Tiempo del clasificador: {}".format(time() - start))
-    seg.video_create(sys.argv[3])
+    seg.video_create(sys.argv[3 if len(sys.argv) > 2 else 1])
     print("Tiempo total: {}".format(time() - start))
+
+
