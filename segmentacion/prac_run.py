@@ -83,7 +83,7 @@ class Segmentador(object):
         # Clasificamos el video
         while ret:
 
-            if count%25 == 0:
+            if count%3 == 0:
                 height, width = self.frame.shape[:2]
                 self.frame = self.frame[70:height, 0:width]
                 cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
@@ -193,23 +193,35 @@ class Segmentador(object):
         _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         if len(contours) > 0:
             contours = max(contours, key=lambda x : len(x)) # Si encuentra mas de un contorno
+            if len(contours)< 100: return
             elipse = cv2.fitEllipse(contours)
             #cv2.ellipse(self.frame, elipse, (0,255,0))
             caja = np.int0(cv2.boxPoints(elipse))
-            #cv2.drawContours(self.frame, [caja], -1, (255,0,0), 3)
+            cv2.drawContours(self.frame, [caja], -1, (255,0,0), 3)
             # Calculamos los puntos medios del rectangulo
             pm1 = (caja[3] + caja[0])/2
             pm2 = (caja[2] + caja[1])/2
-            cv2.circle(self.frame, tuple(pm1), 2, (0,255,0), -1)
+            #cv2.circle(self.frame, tuple(pm1), 2, (0,255,0), -1)
             #cv2.circle(self.frame, tuple(pm2), 2, (0,255,0), -1)
             height, width = self.frame.shape[:2]
             vec = np.array(pm2-pm1)
             p1 = (0, pm1[1] + ((0-pm1[0])*vec[1])/(vec[0]))
             p2 = (width-1, pm2[1] + ((width-1-pm2[0])*vec[1])/(vec[0]))
             #cv2.line(self.frame, p1, p2, (0,0,255), 2)
-            hull = cv2.convexHull(contours)
-            cv2.drawContours(self.frame, hull, -1, (0,0,255))
+            #hull = cv2.convexHull(contours)
+            #cv2.drawContours(self.frame, hull, -1, (0,0,255))
+            moments = cv2.moments(contours)
+            x = int(moments['m10']/moments['m00'])
+            y = int(moments['m01']/moments['m00'])
+            cv2.circle(self.frame, (x, y), 2, (0,255,0), -1)
+            if self.distancia(pm1, (x,y)) < self.distancia(pm2, (x,y)):
+                cv2.circle(self.frame, tuple(pm1), 2, (0,255,0), -1)
+            else:
+                cv2.circle(self.frame, tuple(pm2), 2, (0,0,255), -1)
 
+
+    def distancia(self, a, b):
+        return math.sqrt((b[0]-a[0])**2+(b[1]-a[1])**2)
 
 if __name__ == "__main__":
     start = time()
