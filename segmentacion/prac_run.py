@@ -17,6 +17,7 @@ from sklearn.externals import joblib
 from time import time, sleep
 import sys, os, pickle
 import identificar_bifurcacion as bif
+import math
 
 
 class Segmentador(object):
@@ -59,7 +60,7 @@ class Segmentador(object):
 
        # Entrenemos el modelo
         self.clf.fit(data, lbls)
-        joblib.dump(clf, 'clasificador.pkl')
+        joblib.dump(self.clf, 'clasificador.pkl')
 
 
     def clf_load(self):
@@ -82,8 +83,7 @@ class Segmentador(object):
         # Clasificamos el video
         while ret:
 
-            if count%3 == 0:
-                count += 1
+            if count%25 == 0:
                 height, width = self.frame.shape[:2]
                 self.frame = self.frame[70:height, 0:width]
                 cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
@@ -96,16 +96,18 @@ class Segmentador(object):
                 paleta = np.array([[0,0,255], [255,0,0], [0,255,0]], dtype=np.uint8)
 
                 self.__line_identification()
+                self.__arrow_direction()
 
-                #cv2.imshow("Segmentacion Euclid", cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
+                #sleep(1)
+                cv2.waitKey(1)
+                cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
 
                 cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
                 filename += 1
 
                 out.write(cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
-            else:
-                count += 1
 
+            count += 1
             ret, self.frame = capture.read()
 
         capture.release()
@@ -114,13 +116,13 @@ class Segmentador(object):
 
 
     def __line_identification(self):
-        camino=[]
+        camino = []
         salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
         cv2.circle(self.frame, self.centro, 3, [0,0,255], -1)
 
         linImg = (self.predImg==1).astype(np.uint8)*255
         ret, thresh = cv2.threshold(linImg,50,255,0)
-        _,contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        _, contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         for cont in contours:#identificamos el contorno que determina nuestro camino
            if cv2.pointPolygonTest(cont, self.centro, False)== 0.0:
               camino=cont
@@ -188,30 +190,25 @@ class Segmentador(object):
 
     def __arrow_direction(self): # Esta por terminar
         linImg = (self.predImg==2).astype(np.uint8)*255
-        _,contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-        cv2.drawContours(self.frame, contours, -1, (0, 255, 0), 3)
-        gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        lines = cv2.HoughLines(edges, 1, np.pi/180, 20)
-        left, right = [0, 0], [0, 0]
-        for i in contours:
-            th, rh = i[0][1], i[0][0]
-            if (np.round(th, 2) >= 1.0 and np.round(th, 2) <= 1.1) or (np.round(th, 2) >= 2.0 and np.round(th, 2) <= 2.1):
-                if rh >= 20 and rh <= 30:
-                    left[0] += 1
-                elif rh >= 60 and rh <= 65:
-                    left[1] += 1
-                elif rh >= -73 and rh <= -57:
-                    right[0] += 1
-                elif rh >= 148 and rh <= 176:
-                    right[1] += 1
-        if left[0] >= 1 and left[1] >= 1:
-            cv2.putText(self.frame, 'Flecha izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            return 1.0
-        elif right[1] >= 1 and right[0] >= 1:
-            cv2.putText(self.frame, "Flecha derecha", (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            return -1.0
-        return 0
+        _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        if len(contours) > 0:
+            contours = max(contours, key=lambda x : len(x)) # Si encuentra mas de un contorno
+            elipse = cv2.fitEllipse(contours)
+            #cv2.ellipse(self.frame, elipse, (0,255,0))
+            caja = np.int0(cv2.boxPoints(elipse))
+            #cv2.drawContours(self.frame, [caja], -1, (255,0,0), 3)
+            # Calculamos los puntos medios del rectangulo
+            pm1 = (caja[3] + caja[0])/2
+            pm2 = (caja[2] + caja[1])/2
+            cv2.circle(self.frame, tuple(pm1), 2, (0,255,0), -1)
+            #cv2.circle(self.frame, tuple(pm2), 2, (0,255,0), -1)
+            height, width = self.frame.shape[:2]
+            vec = np.array(pm2-pm1)
+            p1 = (0, pm1[1] + ((0-pm1[0])*vec[1])/(vec[0]))
+            p2 = (width-1, pm2[1] + ((width-1-pm2[0])*vec[1])/(vec[0]))
+            #cv2.line(self.frame, p1, p2, (0,0,255), 2)
+            hull = cv2.convexHull(contours)
+            cv2.drawContours(self.frame, hull, -1, (0,0,255))
 
 
 if __name__ == "__main__":
