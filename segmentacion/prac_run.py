@@ -33,8 +33,8 @@ class Segmentador(object):
         data, lbls = None, None
 
         for i, j in zip(sorted(os.listdir(imgPath)), sorted(os.listdir(mkImgPath))):
-            imNp_aux = imread(i)
-            markImg_aux = imread(j)
+            imNp_aux = imread(imgPath+'/'+i)
+            markImg_aux = imread(mkImgPath+'/'+j)
             self.imNp = cv2.cvtColor(imNp_aux, cv2.COLOR_BGR2RGB)
             self.markImg = cv2.cvtColor(markImg_aux, cv2.COLOR_BGR2RGB)
 
@@ -78,6 +78,7 @@ class Segmentador(object):
         ret, self.frame = capture.read()
         filename = 0
         self.centro=()
+        self.auxiliar=()
 
 
         # Clasificamos el video
@@ -96,7 +97,7 @@ class Segmentador(object):
                 paleta = np.array([[0,0,255], [255,0,0], [0,255,0]], dtype=np.uint8)
 
                 self.__line_identification()
-                self.__arrow_direction()
+                
 
                 #sleep(1)
                 cv2.waitKey(1)
@@ -133,13 +134,36 @@ class Segmentador(object):
         defects=[]
         if len(camino)>0:
            cv2.drawContours(self.frame, camino, -1, (0, 255, 0), 1)
-           #hull = cv2.convexHull(camino)
-           #cv2.drawContours(self.frame, [hull], -1, (255, 0, 0), 2)
            hull = cv2.convexHull(camino,returnPoints=False)
            defects = cv2.convexityDefects(camino,hull)
         if len(salidas)>1:
-            cv2.putText(self.frame,'Cruce de {0} salidas'.format(len(salidas)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            return -1
+            ret = self.__arrow_direction()
+            if not ret:
+               cv2.putText(self.frame,'Cruce de {0} salidas'.format(len(salidas)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+               tv = round((160-self.centro[0])/160.0,2)
+               fv = 0.5
+               return tv,fv
+            else:
+               salida=salidas[0]
+               dist=self.distancia(salida,self.auxiliar)
+               for i in range(0,len(salidas)):
+                  if self.distancia(salidas[i],self.auxiliar)<dist:
+                     salida=salidas[i]
+                     dist=self.distancia(salidas[i],self.auxiliar)
+               cv2.circle(self.frame, salida, 3, [0,255,0], -1)
+               izq = True
+               der = True
+               for caminos in salidas:
+                  if salida[0]>caminos[0]:  izq=False
+                  if salida[0]<caminos[0]:  der=False
+               if izq:  cv2.putText(self.frame,'Tomamos la salida izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+               elif der:  cv2.putText(self.frame,'Tomamos la salida derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+               else:  cv2.putText(self.frame,'Tomamos la salida central', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+               tv = round((160.0-salida[1])/160.0,2)
+               fv = round((170.0-salida[0])/170.0,2)
+               return tv,fv
+               
+              
         elif len(salidas)==1:
            for i in range(defects.shape[0]):
               start,end,f,d = defects[i,0]
@@ -150,41 +174,35 @@ class Segmentador(object):
                  dis = d
                  sdef = start
                  edef=end
-           #cv2.line(self.frame,sdef,edef,[0,0,255],2)
-           #far = tuple(camino[far][0])
-           #cv2.circle(self.frame, tuple(far), 3, [255,0,0], -1)
+          
            if dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))>0:
               cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              vel = (170-salidas[0][1])*100
-              cv2.putText(self.frame,'Velocidad = {0} %'.format(vel/170), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              giro = (abs(160-salidas[0][0]))*100
-              cv2.putText(self.frame,'Velocidad de giro = {0} %'.format(giro/160), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              vel = 170-salidas[0][1]
+              cv2.putText(self.frame,'Velocidad = {0} '.format(round(vel/170.0,2)), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              giro = 160-salidas[0][0]
+              cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              tv = round(giro/160.0,2)
+              fv = round(vel/170.0,2)
+              return tv,fv
            elif dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))<0:
               cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              vel = (170-salidas[0][1])*100
-              cv2.putText(self.frame,'Velocidad = {0} %'.format(vel/170), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              giro = (abs(160-salidas[0][0]))*100
-              cv2.putText(self.frame,'Velocidad de giro = {0} %'.format(giro/160), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              vel = 170-salidas[0][1]
+              cv2.putText(self.frame,'Velocidad = {0} '.format(round(vel/170.0,2)), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              giro = 160-salidas[0][0]
+              cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              tv = round(giro/160.0,2)
+              fv = round(vel/170.0,2)
+              return tv,fv
            else:
               cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              vel = (170-salidas[0][1])*100
-              cv2.putText(self.frame,'Velocidad = {0} %'.format(vel/170), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              giro = (abs(160-salidas[0][0]))*100
-              cv2.putText(self.frame,'Velocidad de giro = {0} %'.format(giro/160), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-        #elif (len(contours) > 0):
-            #moments = cv2.moments(max(contours, key=cv2.contourArea))
-            #x = int(moments['m10']/moments['m00'])
-            #if x >= 120:
-                #cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            #    return -1.0
-            #elif 120 > x and x > 50:
-                #cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            #    return 0
-            #elif 50 >= x:
-                #cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-            #    return 1.0
-        #cv2.waitKey(177) # Comentarlo para mejorar tiempos
-        #cv2.imshow("contorno", self.frame)
+              vel = 170-salidas[0][1]
+              cv2.putText(self.frame,'Velocidad = {0} '.format(round(vel/170.0,2)), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              giro = 160-salidas[0][0]
+              cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+              tv = round(giro/160.0,2)
+              fv = round(vel/170.0,2)
+              return tv,fv
+       
         return 0
 
 
@@ -193,7 +211,7 @@ class Segmentador(object):
         _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         if len(contours) > 0:
             contours = max(contours, key=lambda x : len(x)) # Si encuentra mas de un contorno
-            if len(contours)< 100: return
+            if len(contours)< 100: return False
             elipse = cv2.fitEllipse(contours)
             #cv2.ellipse(self.frame, elipse, (0,255,0))
             caja = np.int0(cv2.boxPoints(elipse))
@@ -215,10 +233,36 @@ class Segmentador(object):
             y = int(moments['m01']/moments['m00'])
             cv2.circle(self.frame, (x, y), 2, (0,255,0), -1)
             if self.distancia(pm1, (x,y)) < self.distancia(pm2, (x,y)):
+                punta = pm1
                 cv2.circle(self.frame, tuple(pm1), 2, (0,255,0), -1)
             else:
+                punta = pm2
                 cv2.circle(self.frame, tuple(pm2), 2, (0,0,255), -1)
+            
+            punto = [x,y]
+            p,q = self.fullLine(punta,punto)
+            cv2.line(self.frame, p, q, (0,0,255), 2)
+            if self.distancia(p, punta)<self.distancia(p,[x,y]):  elbueno=p
+            else:  elbueno=q
+            self.auxiliar=elbueno
+            return True
 
+
+    def Slope(self, x0, y0, x1, y1):
+       return float((y1-y0)/(x1-x0))
+
+
+    def fullLine(self, a, b):
+       slope = self.Slope(a[0], a[1], b[0], b[1])
+       height, width = self.frame.shape[:2]
+       p = [0,0]
+       q = [width,height]
+
+       p[1] = int(-(a[0] - p[0]) * slope + a[1])
+       q[1] = int(-(b[0] - q[0]) * slope + b[1])
+
+       #cv2.line(self.frame, tuple(p), tuple(q), (0,0,255))
+       return p,q
 
     def distancia(self, a, b):
         return math.sqrt((b[0]-a[0])**2+(b[1]-a[1])**2)
@@ -234,5 +278,3 @@ if __name__ == "__main__":
     print("Tiempo del clasificador: {}".format(time() - start))
     seg.video_create(sys.argv[3 if len(sys.argv) > 2 else 1])
     print("Tiempo total: {}".format(time() - start))
-
-
