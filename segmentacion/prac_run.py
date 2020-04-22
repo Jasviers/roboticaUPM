@@ -42,10 +42,8 @@ class Segmentador(object):
                 data = np.concatenate([data_fondo, data_linea, data_marca])
                 lbls = np.concatenate([lbl_fondo, lbl_linea, lbl_marca])
             else:
-                data_aux = np.concatenate([data_fondo, data_linea, data_marca])
-                data = np.concatenate([data, data_aux])
-                lbls_aux = np.concatenate([lbl_fondo, lbl_linea, lbl_marca])
-                lbls = np.concatenate([lbls, lbls_aux])
+                data = np.concatenate([data, np.concatenate([data_fondo, data_linea, data_marca])])
+                lbls = np.concatenate([lbls, np.concatenate([lbl_fondo, lbl_linea, lbl_marca])])
 
        # Entrenemos el modelo
         self.clf.fit(data, lbls)

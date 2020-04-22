@@ -1,3 +1,4 @@
 segmentacion/output.avi
 *.pyc
 .idea/
+rsc/generado/*
