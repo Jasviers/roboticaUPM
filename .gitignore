@@ -1,2 +1,3 @@
-segmentacion/images/*
 segmentacion/output.avi
+*.pyc
+.idea/

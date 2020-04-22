@@ -1,21 +1,12 @@
 #!/usr/bin/env python2.7
 
-####################################################
-# Esqueleto de programa para ejecutar el algoritmo de segmentacion.
-# Este programa primero entrena el clasificador con los datos de
-#  entrenamiento y luego segmenta el video (este entrenamiento podria
-#  hacerse en "prac_ent.py" y aqui recuperar los parametros del clasificador
-###################################################
-
-
 import cv2
-from scipy.misc import imread, imsave
-from matplotlib import pyplot as plt
+from scipy.misc import imread
 import numpy as np
 from sklearn.neighbors import NearestCentroid
 from sklearn.externals import joblib
-from time import time, sleep
-import sys, os, pickle
+from time import time
+import sys, os
 import identificar_bifurcacion as bif
 import math
 
@@ -33,10 +24,8 @@ class Segmentador(object):
         data, lbls = None, None
 
         for i, j in zip(sorted(os.listdir(imgPath)), sorted(os.listdir(mkImgPath))):
-            imNp_aux = imread(imgPath+'/'+i)
-            markImg_aux = imread(mkImgPath+'/'+j)
-            self.imNp = cv2.cvtColor(imNp_aux, cv2.COLOR_BGR2RGB)
-            self.markImg = cv2.cvtColor(markImg_aux, cv2.COLOR_BGR2RGB)
+            self.imNp = cv2.cvtColor(imread(imgPath+i), cv2.COLOR_BGR2RGB)
+            self.markImg = cv2.cvtColor(imread(mkImgPath+j), cv2.COLOR_BGR2RGB)
 
             # Preparo los datos de entrenamiento
             # saco todos los puntos marcados en rojo/verde/azul
@@ -60,23 +49,22 @@ class Segmentador(object):
 
        # Entrenemos el modelo
         self.clf.fit(data, lbls)
-        joblib.dump(self.clf, 'clasificador.pkl')
+        joblib.dump(self.clf, '../clasificadores/segmentacion.pkl')
 
 
     def clf_load(self):
-        self.clf = joblib.load('clasificador.pkl')
+        self.clf = joblib.load('../clasificadores/segmentacion.pkl')
 
 
     def video_create(self, video):
         # Capturamos el video
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
+        out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640,480))
 
         # Inicio la captura de imagenes
         capture = cv2.VideoCapture(video)
-        count = 0
+        count, filename = 0, 0
         ret, self.frame = capture.read()
-        filename = 0
         self.centro=()
         self.auxiliar=()
 
@@ -85,25 +73,22 @@ class Segmentador(object):
         while ret:
 
             if count%3 == 0:
-                height, width = self.frame.shape[:2]
-                self.frame = self.frame[70:height, 0:width]
-                cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
+                self.height, self.width = self.frame.shape[:2]
+                self.frame = self.frame[70:self.height, 0:self.width]
+                cv2.imwrite('../rsc/generado/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
                 imNp = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
                 self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-                imrgbn = np.rollaxis((np.rollaxis(imNp, 2) + 0.0)/np.sum(imNp, 2), 0, 3)[:,:,:2]
                 predicted_image = self.clf.predict(np.reshape(imNp, (imNp.shape[0]*imNp.shape[1], imNp.shape[2]))) # Creamos la prediccion y redimensionamos
 
                 self.predImg = np.reshape(predicted_image, (imNp.shape[0], imNp.shape[1])) # Recuperamos las dimensiones
-                paleta = np.array([[0,0,255], [255,0,0], [0,255,0]], dtype=np.uint8)
+                paleta = np.array([(0,0,255), (255,0,0), (0,255,0)], dtype=np.uint8)
 
                 self.__line_identification()
-                
 
-                #sleep(1)
                 cv2.waitKey(1)
                 cv2.imshow("Segmentacion Euclid", cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
 
-                cv2.imwrite('images/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
+                cv2.imwrite('../rsc/generado/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
                 filename += 1
 
                 out.write(cv2.cvtColor(paleta[self.predImg], cv2.COLOR_RGB2BGR))
@@ -127,7 +112,6 @@ class Segmentador(object):
         for cont in contours:#identificamos el contorno que determina nuestro camino
            if cv2.pointPolygonTest(cont, self.centro, False)== 0.0:
               camino=cont
-
 
         for point in salidas:
               cv2.circle(self.frame, point, 3, [255,0,0], -1)
@@ -210,68 +194,59 @@ class Segmentador(object):
         linImg = (self.predImg==2).astype(np.uint8)*255
         _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         if len(contours) > 0:
-            contours = max(contours, key=lambda x : len(x)) # Si encuentra mas de un contorno
-            if len(contours)< 100: return False
-            elipse = cv2.fitEllipse(contours)
-            #cv2.ellipse(self.frame, elipse, (0,255,0))
-            caja = np.int0(cv2.boxPoints(elipse))
-            cv2.drawContours(self.frame, [caja], -1, (255,0,0), 3)
+            contours = max(contours, key=lambda x: len(x)) # Si encuentra mas de un contorno
+            if len(contours) < 100:
+                return False
+
+            caja = np.int0(cv2.boxPoints(cv2.fitEllipse(contours)))
+            #cv2.drawContours(self.frame, [caja], -1, (255,0,0), 3)
+
             # Calculamos los puntos medios del rectangulo
             pm1 = (caja[3] + caja[0])/2
             pm2 = (caja[2] + caja[1])/2
-            #cv2.circle(self.frame, tuple(pm1), 2, (0,255,0), -1)
-            #cv2.circle(self.frame, tuple(pm2), 2, (0,255,0), -1)
-            height, width = self.frame.shape[:2]
-            vec = np.array(pm2-pm1)
-            p1 = (0, pm1[1] + ((0-pm1[0])*vec[1])/(vec[0]))
-            p2 = (width-1, pm2[1] + ((width-1-pm2[0])*vec[1])/(vec[0]))
-            #cv2.line(self.frame, p1, p2, (0,0,255), 2)
-            #hull = cv2.convexHull(contours)
-            #cv2.drawContours(self.frame, hull, -1, (0,0,255))
+
             moments = cv2.moments(contours)
             x = int(moments['m10']/moments['m00'])
             y = int(moments['m01']/moments['m00'])
             cv2.circle(self.frame, (x, y), 2, (0,255,0), -1)
-            if self.distancia(pm1, (x,y)) < self.distancia(pm2, (x,y)):
-                punta = pm1
-                cv2.circle(self.frame, tuple(pm1), 2, (0,255,0), -1)
+            punta = pm1 if self.distancia(pm1, (x,y)) < self.distancia(pm2, (x,y)) else pm2
+            cv2.circle(self.frame, tuple(punta), 2, (0,0,255), -1)
+
+            p,q = self.full_line(punta, (x,y))
+            #cv2.line(self.frame, p, q, (0,0,255), 2)
+            if self.distancia(p, punta) < self.distancia(p, (x,y)):
+                self.auxiliar = p
             else:
-                punta = pm2
-                cv2.circle(self.frame, tuple(pm2), 2, (0,0,255), -1)
-            
-            punto = [x,y]
-            p,q = self.fullLine(punta,punto)
-            cv2.line(self.frame, p, q, (0,0,255), 2)
-            if self.distancia(p, punta)<self.distancia(p,[x,y]):  elbueno=p
-            else:  elbueno=q
-            self.auxiliar=elbueno
+                self.auxiliar = q
+
             return True
 
 
-    def Slope(self, x0, y0, x1, y1):
+    def slope(self, x0, y0, x1, y1):
        return float((y1-y0)/(x1-x0))
 
 
-    def fullLine(self, a, b):
-       slope = self.Slope(a[0], a[1], b[0], b[1])
-       height, width = self.frame.shape[:2]
+    def full_line(self, a, b):
+       slope = self.slope(a[0], a[1], b[0], b[1])
        p = [0,0]
-       q = [width,height]
+       q = [self.width, self.height]
 
        p[1] = int(-(a[0] - p[0]) * slope + a[1])
        q[1] = int(-(b[0] - q[0]) * slope + b[1])
 
        #cv2.line(self.frame, tuple(p), tuple(q), (0,0,255))
-       return p,q
+       return p, q
+
 
     def distancia(self, a, b):
-        return math.sqrt((b[0]-a[0])**2+(b[1]-a[1])**2)
+        return math.sqrt((b[0] - a[0])**2 + (b[1] - a[1])**2)
+
 
 if __name__ == "__main__":
     start = time()
     seg = Segmentador()
     print("Tiempo al crear el segmentador: {}".format(time() - start))
-    if os.path.isfile('clasificador.pkl'):
+    if os.path.isfile('../clasificadores/segmentacion.plk'):
         seg.clf_load()
     else:
         seg.clf_create(sys.argv[1], sys.argv[2])

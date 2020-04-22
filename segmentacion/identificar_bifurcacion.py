@@ -1,10 +1,8 @@
 import cv2
-from scipy.misc import imread, imsave
-from matplotlib import pyplot as plt
 import numpy as np
 import math
 
-def existen_bifurcaciones(img,imgMrk, centro):
+def existen_bifurcaciones(img, imgMrk, centro):
  
    linImg = (imgMrk==1).astype(np.uint8)*255
    _,contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)#sacamos los contornos de la linea
