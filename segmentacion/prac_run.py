@@ -76,7 +76,8 @@ class Segmentador(object):
                 cv2.imwrite('../rsc/generado/image%03d.png' % filename, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
                 imNp = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
                 self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-                predicted_image = self.clf.predict(np.reshape(imNp, (imNp.shape[0]*imNp.shape[1], imNp.shape[2]))) # Creamos la prediccion y redimensionamos
+                # Creamos la prediccion y redimensionamos
+                predicted_image = self.clf.predict(np.reshape(imNp, (imNp.shape[0]*imNp.shape[1], imNp.shape[2])))
 
                 self.predImg = np.reshape(predicted_image, (imNp.shape[0], imNp.shape[1])) # Recuperamos las dimensiones
                 paleta = np.array([(0,0,255), (255,0,0), (0,255,0)], dtype=np.uint8)
@@ -244,7 +245,7 @@ if __name__ == "__main__":
     start = time()
     seg = Segmentador()
     print("Tiempo al crear el segmentador: {}".format(time() - start))
-    if os.path.isfile('../clasificadores/segmentacion.plk'):
+    if os.path.exists('../clasificadores/segmentacion.pkl'):
         seg.clf_load()
     else:
         seg.clf_create(sys.argv[1], sys.argv[2])
