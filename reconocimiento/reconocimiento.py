@@ -1,11 +1,16 @@
 #!/usr/bin/env python2.7
 
-import numpy as np
+import cv2
+import os
+import sys
 from time import time
+
+import numpy as np
 import sklearn.neighbors as neig
-import os, sys, cv2
 from sklearn.externals import joblib
 from sklearn.model_selection import LeaveOneOut
+
+import segmentacion.identificar_bifurcacion as bif
 
 
 class Reconocimiento(object):
@@ -83,6 +88,7 @@ class Reconocimiento(object):
         # Inicio la captura de imagenes
         capture = cv2.VideoCapture(video)
         count, filename = 0, 0
+        centro = ()
         ret, self.frame = capture.read()
 
         while ret:
@@ -98,14 +104,16 @@ class Reconocimiento(object):
                 # Recuperamos las dimensiones
                 self.predImg = np.reshape(predicted_image, (imNp.shape[0], imNp.shape[1]))
 
-                # Esto solo se ejecutaria si no es cruce
+                #salidas, centro = bif.existen_bifurcaciones(self.frame, self.predImg, centro)
+                #if not len(salidas) > 1:
                 linImg = (self.predImg == 2).astype(np.uint8) * 255
                 _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
                 if len(contours) > 0:
                     contours = max(contours, key=lambda x: len(x))
                     if not len(contours) < 100:
                         fig = self.clf.predict(cv2.HuMoments(cv2.moments(contours, True)).T)
-                        cv2.putText(self.frame, 'Identificado {} '.format(self.etiquetas[fig[0]]), (15, 60), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+                        cv2.putText(self.frame, 'Identificado {} '.format(self.etiquetas[fig[0]]), (15, 60),
+                                    cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
 
                 paleta = np.array([(0, 0, 255), (255, 0, 0), (0, 255, 0)], dtype=np.uint8)
 

@@ -6,9 +6,10 @@
 #
 # The interesting funcion here is "select_fg_bg" read documentation below
 #######################################################################
-import pygame
-import numpy as np
 import cv2
+import numpy as np
+import pygame
+
 
 def roundline(srf, color, start, end, radius=1):
     dx = end[0]-start[0]

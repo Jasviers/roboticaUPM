@@ -1,14 +1,17 @@
 #!/usr/bin/env python2.7
 
-import cv2
-from scipy.misc import imread
-import numpy as np
-from sklearn.neighbors import NearestCentroid
-from sklearn.externals import joblib
-from time import time
-import sys, os
-import identificar_bifurcacion as bif
 import math
+import os
+import sys
+from time import time
+
+import cv2
+import numpy as np
+from scipy.misc import imread
+from sklearn.externals import joblib
+from sklearn.neighbors import NearestCentroid
+
+import identificar_bifurcacion as bif
 
 
 class Segmentador(object):
@@ -102,6 +105,7 @@ class Segmentador(object):
 
     def __line_identification(self):
         camino = []
+        defects = []
         salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
         cv2.circle(self.frame, self.centro, 3, [0,0,255], -1)
 
@@ -109,54 +113,54 @@ class Segmentador(object):
         ret, thresh = cv2.threshold(linImg,50,255,0)
         _, contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         for cont in contours:#identificamos el contorno que determina nuestro camino
-           if cv2.pointPolygonTest(cont, self.centro, False)== 0.0:
+           if cv2.pointPolygonTest(cont, self.centro, False) == 0.0:
               camino=cont
 
         for point in salidas:
               cv2.circle(self.frame, point, 3, [255,0,0], -1)
-        defects=[]
-        if len(camino)>0:
+
+        if len(camino) > 0:
            cv2.drawContours(self.frame, camino, -1, (0, 255, 0), 1)
-           hull = cv2.convexHull(camino,returnPoints=False)
-           defects = cv2.convexityDefects(camino,hull)
-        if len(salidas)>1:
+           hull = cv2.convexHull(camino, returnPoints=False)
+           defects = cv2.convexityDefects(camino, hull)
+        if len(salidas) > 1:
             ret = self.__arrow_direction()
             if not ret:
-               cv2.putText(self.frame,'Cruce de {0} salidas'.format(len(salidas)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
+               cv2.putText(self.frame, 'Cruce de {0} salidas'.format(len(salidas)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                tv = round((160-self.centro[0])/160.0,2)
                fv = 0.5
-               return tv,fv
+               return tv, fv
             else:
                salida=salidas[0]
-               dist=self.distancia(salida,self.auxiliar)
-               for i in range(0,len(salidas)):
-                  if self.distancia(salidas[i],self.auxiliar)<dist:
-                     salida=salidas[i]
-                     dist=self.distancia(salidas[i],self.auxiliar)
+               dist=self.distancia(salida, self.auxiliar)
+               for i in range(len(salidas)):
+                  if self.distancia(salidas[i], self.auxiliar) < dist:
+                     salida = salidas[i]
+                     dist = self.distancia(salidas[i],self.auxiliar)
                cv2.circle(self.frame, salida, 3, [0,255,0], -1)
                izq = True
                der = True
                for caminos in salidas:
-                  if salida[0]>caminos[0]:  izq=False
-                  if salida[0]<caminos[0]:  der=False
+                  if salida[0] > caminos[0]:  izq = False
+                  if salida[0] < caminos[0]:  der = False
                if izq:  cv2.putText(self.frame,'Tomamos la salida izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                elif der:  cv2.putText(self.frame,'Tomamos la salida derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                else:  cv2.putText(self.frame,'Tomamos la salida central', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                tv = round((160.0-salida[1])/160.0,2)
                fv = round((170.0-salida[0])/170.0,2)
-               return tv,fv
+               return tv, fv
                
               
-        elif len(salidas)==1:
+        elif len(salidas) == 1:
            for i in range(defects.shape[0]):
-              start,end,f,d = defects[i,0]
+              start, end, f, d = defects[i, 0]
               start = tuple(camino[start][0])
               end = tuple(camino[end][0])
-              if i==0 or d>dis:
+              if i==0 or d > dis:
                  far = tuple(camino[f][0])
                  dis = d
                  sdef = start
-                 edef=end
+                 edef = end
           
            if dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))>0:
               cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
@@ -166,7 +170,8 @@ class Segmentador(object):
               cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               tv = round(giro/160.0,2)
               fv = round(vel/170.0,2)
-              return tv,fv
+              return tv, fv
+
            elif dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))<0:
               cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               vel = 170-salidas[0][1]
@@ -175,7 +180,8 @@ class Segmentador(object):
               cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               tv = round(giro/160.0,2)
               fv = round(vel/170.0,2)
-              return tv,fv
+              return tv, fv
+
            else:
               cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               vel = 170-salidas[0][1]
@@ -184,7 +190,7 @@ class Segmentador(object):
               cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               tv = round(giro/160.0,2)
               fv = round(vel/170.0,2)
-              return tv,fv
+              return tv, fv
        
         return 0
 

@@ -4,9 +4,11 @@ A wrapper for the TkSimulator to add markers to the simulator
 
 import math
 import sys
-from pyrobot.simulators.pysim import TkSimulator
 from PIL import Image, ImageTk
+
 import numpy as np
+from pyrobot.simulators.pysim import TkSimulator
+
 
 class LineSimulation(TkSimulator):
 

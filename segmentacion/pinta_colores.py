@@ -1,9 +1,7 @@
 
-from scipy.misc import imread, imsave
 import numpy as np
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D as ax3d
-
+from scipy.misc import imread
 
 # Leo las imagenes de entrenamiento
 # imNp = imread('linea2017-2.png')

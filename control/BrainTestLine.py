@@ -1,6 +1,7 @@
+import math
+
 from pyrobot.brain import Brain
 
-import math
 
 class BrainTestNavigator(Brain):
  

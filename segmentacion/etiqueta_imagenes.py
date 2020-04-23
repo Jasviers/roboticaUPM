@@ -1,8 +1,8 @@
 import cv2
-from scipy.misc import imread, imsave
 from matplotlib import pyplot as plt
-import select_pixels as sel
+from scipy.misc import imsave
 
+import select_pixels as sel
 
 # Abres el video / camara con (Recordar cambiar de video si se quiere usar otro)
 capture = cv2.VideoCapture("../rsc/line0.mp4")

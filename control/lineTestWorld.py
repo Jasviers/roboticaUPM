@@ -2,9 +2,11 @@
 A simulation with a simple line on the floor.
 """
 
-from lineSimulation import LineSimulation
 from pyrobot.simulators.pysim import TkPioneer, \
-     PioneerFrontSonars, PioneerFrontLightSensors
+    PioneerFrontSonars
+
+from lineSimulation import LineSimulation
+
 
 def INIT():
     # (width, height), (offset x, offset y), scale

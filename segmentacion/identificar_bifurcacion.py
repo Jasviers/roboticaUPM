@@ -1,17 +1,19 @@
+import math
+
 import cv2
 import numpy as np
-import math
+
 
 def existen_bifurcaciones(img, imgMrk, centro):
  
    linImg = (imgMrk==1).astype(np.uint8)*255
-   _,contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)#sacamos los contornos de la linea
-   bordes=[]
-   bordeN=[]
-   bordeS=[]
-   bordeW=[]
-   bordeE=[]
-   for cont in contours:#aqui vamos a guardar las distintas salidas y el borde de la imagen por el que salen
+   _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE) #sacamos los contornos de la linea
+   bordes = []
+   bordeN = []
+   bordeS = []
+   bordeW = []
+   bordeE = []
+   for cont in contours: #aqui vamos a guardar las distintas salidas y el borde de la imagen por el que salen
       for point in cont:
          height, width = img.shape[:2]
          if (point[0][0]==0):  bordeW.append(tuple(point[0]))
@@ -22,6 +24,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
    bordeS.sort()
    bordeW.sort()
    bordeE.sort()
+
    #el siguiente codigo se encarga de poder separar los puntos de cada borde en distintos bordes
    if len(bordeW)>0:
       definitiva=[]
@@ -92,7 +95,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
    auxiliar=[]
    for i in range(0,len(bordes)):
       borde=bordes[i]
-      if all(elem in auxiliar  for elem in borde):  continue
+      if all(elem in auxiliar for elem in borde): continue
       auxiliar=[]
       flag = True
       if i == len(bordes)-1:  flag=False
@@ -164,6 +167,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
    for x in puntos_salida:#sacamos el punto de entrada de la lista de salidas
       if type(x)==tuple:
          if x==nuevo_centro:  puntos_salida.remove(x)
+
    #elimino las salidas que no forman parte del camino
    puntos_salida[:] = [x for x in puntos_salida if len(contornolinea)>0 and abs(cv2.pointPolygonTest(contornolinea, x, True))<5]
 
