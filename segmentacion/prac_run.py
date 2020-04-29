@@ -18,7 +18,8 @@ class Segmentador(object):
 
 
     def __init__(self):
-        pass
+        self.centro = ()
+        self.auxiliar = ()
 
 
     def clf_create(self, imgPath, mkImgPath):
@@ -66,9 +67,6 @@ class Segmentador(object):
         capture = cv2.VideoCapture(video)
         count, filename = 0, 0
         ret, self.frame = capture.read()
-        self.centro=()
-        self.auxiliar=()
-
 
         # Clasificamos el video
         while ret:
@@ -104,15 +102,15 @@ class Segmentador(object):
 
 
     def __line_identification(self):
-        camino = []
-        defects = []
+        camino, defects= [], []
+        tv, fv = 0, 0
         salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
         cv2.circle(self.frame, self.centro, 3, [0,0,255], -1)
 
         linImg = (self.predImg==1).astype(np.uint8)*255
         ret, thresh = cv2.threshold(linImg,50,255,0)
         _, contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-        for cont in contours:#identificamos el contorno que determina nuestro camino
+        for cont in contours: # identificamos el contorno que determina nuestro camino
            if cv2.pointPolygonTest(cont, self.centro, False) == 0.0:
               camino=cont
 
@@ -129,14 +127,13 @@ class Segmentador(object):
                cv2.putText(self.frame, 'Cruce de {0} salidas'.format(len(salidas)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                tv = round((160-self.centro[0])/160.0,2)
                fv = 0.5
-               return tv, fv
             else:
-               salida=salidas[0]
-               dist=self.distancia(salida, self.auxiliar)
-               for i in range(len(salidas)):
-                  if self.distancia(salidas[i], self.auxiliar) < dist:
-                     salida = salidas[i]
-                     dist = self.distancia(salidas[i],self.auxiliar)
+               salida = salidas[0]
+               dist = self.distancia(salida, self.auxiliar)
+               for i in salidas:
+                  if self.distancia(i, self.auxiliar) < dist:
+                     salida = i
+                     dist = self.distancia(i, self.auxiliar)
                cv2.circle(self.frame, salida, 3, [0,255,0], -1)
                izq = True
                der = True
@@ -148,54 +145,43 @@ class Segmentador(object):
                else:  cv2.putText(self.frame,'Tomamos la salida central', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                tv = round((160.0-salida[1])/160.0,2)
                fv = round((170.0-salida[0])/170.0,2)
-               return tv, fv
                
               
         elif len(salidas) == 1:
            for i in range(defects.shape[0]):
               start, end, f, d = defects[i, 0]
-              start = tuple(camino[start][0])
-              end = tuple(camino[end][0])
               if i==0 or d > dis:
                  far = tuple(camino[f][0])
                  dis = d
-                 sdef = start
-                 edef = end
           
            if dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))>0:
               cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               vel = 170-salidas[0][1]
-              cv2.putText(self.frame,'Velocidad = {0} '.format(round(vel/170.0,2)), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               giro = 160-salidas[0][0]
-              cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               tv = round(giro/160.0,2)
               fv = round(vel/170.0,2)
-              return tv, fv
 
            elif dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))<0:
               cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               vel = 170-salidas[0][1]
-              cv2.putText(self.frame,'Velocidad = {0} '.format(round(vel/170.0,2)), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               giro = 160-salidas[0][0]
-              cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               tv = round(giro/160.0,2)
               fv = round(vel/170.0,2)
-              return tv, fv
 
            else:
               cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               vel = 170-salidas[0][1]
-              cv2.putText(self.frame,'Velocidad = {0} '.format(round(vel/170.0,2)), (15,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               giro = 160-salidas[0][0]
-              cv2.putText(self.frame,'Velocidad de giro = {0} '.format(round(giro/160.0,2)), (15,60), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
               tv = round(giro/160.0,2)
               fv = round(vel/170.0,2)
-              return tv, fv
-       
-        return 0
+           cv2.putText(self.frame, 'Velocidad de giro = {0} '.format(round(giro / 160.0, 2)), (15, 60),
+                       cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+           cv2.putText(self.frame, 'Velocidad = {0} '.format(round(vel / 170.0, 2)), (15, 40), cv2.FONT_HERSHEY_PLAIN,
+                       1, (255, 0, 0))
+        return tv, fv
 
 
-    def __arrow_direction(self): # Esta por terminar
+    def __arrow_direction(self):
         linImg = (self.predImg==2).astype(np.uint8)*255
         _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         if len(contours) > 0:
@@ -217,12 +203,8 @@ class Segmentador(object):
             punta = pm1 if self.distancia(pm1, (x,y)) < self.distancia(pm2, (x,y)) else pm2
             cv2.circle(self.frame, tuple(punta), 2, (0,0,255), -1)
 
-            p,q = self.full_line(punta, (x,y))
-            #cv2.line(self.frame, p, q, (0,0,255), 2)
-            if self.distancia(p, punta) < self.distancia(p, (x,y)):
-                self.auxiliar = p
-            else:
-                self.auxiliar = q
+            p, q = self.full_line(punta, (x,y))
+            self.auxiliar = p if self.distancia(p, punta) < self.distancia(p, (x,y)) else q
 
             return True
 

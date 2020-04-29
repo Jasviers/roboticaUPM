@@ -8,6 +8,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
  
    linImg = (imgMrk==1).astype(np.uint8)*255
    _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE) #sacamos los contornos de la linea
+   width, height = 0, 0
    bordes = []
    bordeN = []
    bordeS = []
@@ -112,9 +113,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
    definitiva.sort()
    bordes=definitiva
          
-         
-   camino = []
-   result = 0
+
    salidas = []
    auxiliar = []
    nuevo_centro =()
@@ -154,7 +153,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
          x = auxiliar[0]
          x = x[len(x)/2]#el centro estara en la posicion intermedia del borde de entrada
          nuevo_centro = x[0],x[1]
-      else: nuevo_centro=(160,170) #aqui habria que hacer un tratamiento para cuando perdamos la linea
+      else: nuevo_centro=(width/2, height) #aqui habria que hacer un tratamiento para cuando perdamos la linea
       if len(salidas)>0:
          for salida in salidas:
             x = salida[len(salida)/2]
@@ -172,5 +171,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
    puntos_salida[:] = [x for x in puntos_salida if len(contornolinea)>0 and abs(cv2.pointPolygonTest(contornolinea, x, True))<5]
 
    #devuelvo contorno del camino, salidas y centro
+   cv2.drawContours(img, contornolinea, -1, (0, 255, 0), 2)
+   cv2.circle(img, nuevo_centro, 2, (255,0,0))
    return puntos_salida, nuevo_centro
 
