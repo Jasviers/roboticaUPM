@@ -140,20 +140,20 @@ def existen_bifurcaciones(img, imgMrk, centro):
             puntos_salida.append(x)
 
    else:
+      dist = math.sqrt(pow((bordes[0][0][0]-centro[0]),2)+pow((bordes[0][0][1]-centro[1]),2))
+      caminoaprox = bordes[0]
       for i in range(len(bordes)):#si existe un centro previo
          cont = bordes[i]
          for e in range(len(cont)):
             point = cont[e]
+            if math.sqrt(pow((point[0]-centro[0]),2)+pow((point[1]-centro[1]),2)) < dist:
+               dist = math.sqrt(pow((point[0]-centro[0]),2)+pow((point[1]-centro[1]),2))
+               caminoaprox = cont
             height, width = img.shape[:2]
-            if cont not in auxiliar and ((math.sqrt(pow((point[0]-centro[0]),2)+pow((point[1]-centro[1]),2)))<20):
-               auxiliar.append(cont)#el nuevo centro deberia estar cerca del antiguo
-            elif cont not in salidas:
+            if cont not in salidas:
                salidas.append(cont)
-      if len(auxiliar)>0:
-         x = auxiliar[0]
-         x = x[len(x)/2]#el centro estara en la posicion intermedia del borde de entrada
-         nuevo_centro = x[0],x[1]
-      else: nuevo_centro=(width/2, height) #aqui habria que hacer un tratamiento para cuando perdamos la linea
+      x = caminoaprox[len(caminoaprox)/2]
+      nuevo_centro = x[0],x[1]
       if len(salidas)>0:
          for salida in salidas:
             x = salida[len(salida)/2]
@@ -174,4 +174,3 @@ def existen_bifurcaciones(img, imgMrk, centro):
    cv2.drawContours(img, contornolinea, -1, (0, 255, 0), 2)
    cv2.circle(img, nuevo_centro, 2, (255,0,0))
    return puntos_salida, nuevo_centro
-
