@@ -8,7 +8,6 @@ def existen_bifurcaciones(img, imgMrk, centro):
  
    linImg = (imgMrk==1).astype(np.uint8)*255
    _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE) #sacamos los contornos de la linea
-   width, height = 0, 0
    bordes = []
    bordeN = []
    bordeS = []
@@ -94,8 +93,7 @@ def existen_bifurcaciones(img, imgMrk, centro):
    bordes.sort()
    definitiva=[]
    auxiliar=[]
-   for i in range(0,len(bordes)):
-      borde=bordes[i]
+   for i, borde in enumerate(bordes):
       if all(elem in auxiliar for elem in borde): continue
       auxiliar=[]
       flag = True
@@ -120,36 +118,33 @@ def existen_bifurcaciones(img, imgMrk, centro):
    puntos_salida=[]
    contornolinea=[]
 
-   if not any(centro):#si no existe un centro previo, buscamos uno que interseccione con el borde inferior de la imagen
-      for i in range(len(bordes)):
-         cont = bordes[i]
-         for e in range(len(cont)):
-            point = cont[e]
+   if not any(centro): # Si no existe un centro previo, buscamos uno que interseccione con el borde inferior de la imagen
+      for cont in bordes:
+         for point in cont:
             height, width = img.shape[:2]
             if cont not in auxiliar and (point[1]==height-1):
                auxiliar.append(cont)
             elif cont not in salidas:
                salidas.append(cont)
-      if len(auxiliar)>0:
+      if len(auxiliar) > 0:
          x = auxiliar[0]
-         x = x[len(x)/2]#el centro estara en la posicion intermedia del borde de entrada
+         x = x[len(x)/2] # El centro estara en la posicion intermedia del borde de entrada
          nuevo_centro = x[0],x[1]
-      if len(salidas)>0:
+      if len(salidas) > 0:
          for salida in salidas:
             x = salida[len(salida)/2]
             puntos_salida.append(x)
 
-   else:
-      dist = math.sqrt(pow((bordes[0][0][0]-centro[0]),2)+pow((bordes[0][0][1]-centro[1]),2))
+   elif bordes:
+      dist = math.sqrt(pow((bordes[0][0][0]-centro[0]), 2)+pow((bordes[0][0][1]-centro[1]), 2))
       caminoaprox = bordes[0]
-      for i in range(len(bordes)):#si existe un centro previo
+      for i in range(len(bordes)): # Si existe un centro previo
          cont = bordes[i]
          for e in range(len(cont)):
             point = cont[e]
             if math.sqrt(pow((point[0]-centro[0]),2)+pow((point[1]-centro[1]),2)) < dist:
                dist = math.sqrt(pow((point[0]-centro[0]),2)+pow((point[1]-centro[1]),2))
                caminoaprox = cont
-            height, width = img.shape[:2]
             if cont not in salidas:
                salidas.append(cont)
       x = caminoaprox[len(caminoaprox)/2]
@@ -159,18 +154,19 @@ def existen_bifurcaciones(img, imgMrk, centro):
             x = salida[len(salida)/2]
             puntos_salida.append(x)#cada salida es el punto medio de los bordes de salida
 
-   for cont in contours:#identificamos el contorno que determina nuestro camino
-      if cv2.pointPolygonTest(cont, nuevo_centro, False)== 0.0:
-         contornolinea=cont
+   if nuevo_centro:
+      for cont in contours:#identificamos el contorno que determina nuestro camino
+         if cv2.pointPolygonTest(cont, nuevo_centro, False)== 0.0:
+            contornolinea=cont
 
-   for x in puntos_salida:#sacamos el punto de entrada de la lista de salidas
-      if type(x)==tuple:
-         if x==nuevo_centro:  puntos_salida.remove(x)
+      for x in puntos_salida:#sacamos el punto de entrada de la lista de salidas
+         if type(x)==tuple:
+            if x==nuevo_centro:  puntos_salida.remove(x)
 
-   #elimino las salidas que no forman parte del camino
-   puntos_salida[:] = [x for x in puntos_salida if len(contornolinea)>0 and abs(cv2.pointPolygonTest(contornolinea, x, True))<5]
+      #elimino las salidas que no forman parte del camino
+      puntos_salida[:] = [x for x in puntos_salida if len(contornolinea)>0 and abs(cv2.pointPolygonTest(contornolinea, x, True))<5]
 
-   #devuelvo contorno del camino, salidas y centro
-   cv2.drawContours(img, contornolinea, -1, (0, 255, 0), 2)
-   cv2.circle(img, nuevo_centro, 2, (255,0,0))
+      #devuelvo contorno del camino, salidas y centro
+      cv2.drawContours(img, contornolinea, -1, (0, 255, 0), 2)
+      cv2.circle(img, nuevo_centro, 2, (255,0,0))
    return puntos_salida, nuevo_centro

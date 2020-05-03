@@ -92,11 +92,11 @@ class Reconocimiento(object):
         # Creamos el clasificador
         self.clfORB = neig.KNeighborsClassifier(1, metric="euclidean")
         self.clfORB.fit(*self.__orb(trainPath))
-        joblib.dump(self.clfORB, '../clasificadores/reconocimientoHu.pkl')
+        joblib.dump(self.clfORB, '../clasificadores/reconocimientoORB.pkl')
 
 
     def clf_load(self):
-        self.clfHu = joblib.load('../clasificadores/reconocimientHu.pkl')
+        self.clfHu = joblib.load('../clasificadores/reconocimientoHu.pkl')
         self.clfORB = joblib.load('../clasificadores/reconocimientoORB.pkl')
 
 
@@ -106,15 +106,23 @@ class Reconocimiento(object):
         for train, test in LeaveOneOut().split(data):
             clf = neig.KNeighborsClassifier(1, metric="euclidean")
             clf.fit(data[train], lbls[train])
-            acc += (int(clf.predict(data[test])[0]) == int(lbls[test][0]))
-        print("Aciertos con momentos de hu {} de {}".format(acc, self.size))
+            acc += (int(clf.predict(data[test])[0]) != int(lbls[test][0]))
+        print("Error con momentos de hu: {} de {}".format(acc, self.size))
         data, lbls = self.__orb(trainPath)
         acc = 0
         for train, test in LeaveOneOut().split(data):
             clf = neig.KNeighborsClassifier(1, metric="euclidean")
             clf.fit(data[train], lbls[train])
-            acc += (int(clf.predict(data[test])[0]) == int(lbls[test][0]))
-        print("Aciertos con momentos de hu {} de {}".format(acc, self.size))
+            acc += (int(clf.predict(data[test])[0]) != int(lbls[test][0]))
+        print("Error con ORB: {} de {}".format(acc, self.size))
+
+
+    def __limit(self, points):
+        height, width = self.frame.shape[:2]
+        for i in points:
+            if i[0][0]==0 or i[0][0]==width-1 or i[0][1]==0 or i[0][1]==height-1:
+                return True
+        return False
 
 
     def video_gererate(self, video):
@@ -147,13 +155,16 @@ class Reconocimiento(object):
                     _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
                     if len(contours) > 0:
                         contours = max(contours, key=lambda x: len(x))
-                        if not len(contours) < 175:
-                            fig = self.clfORB.predict([self.__calc_orb(contours, linImg)])
-                            cv2.putText(self.frame, 'Identificado ORB {} '.format(self.etiquetas[fig[0]]), (15, 40),
-                                        cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
-                            fig = self.clfHu.predict(cv2.HuMoments(cv2.moments(contours, True)).T)
-                            cv2.putText(self.frame, 'Identificado Hu {} '.format(self.etiquetas[fig[0]]), (15, 60),
-                                        cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+                        if not len(contours) < 100 and not self.__limit(contours):
+                            try:
+                                fig = self.clfORB.predict([self.__calc_orb(contours, linImg)])
+                                cv2.putText(self.frame, 'Identificado ORB {} '.format(self.etiquetas[fig[0]]), (15, 40),
+                                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+                                fig = self.clfHu.predict(cv2.HuMoments(cv2.moments(contours, True)).T)
+                                cv2.putText(self.frame, 'Identificado Hu {} '.format(self.etiquetas[fig[0]]), (15, 60),
+                                            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+                            except:
+                                pass
 
 
                 paleta = np.array([(0, 0, 255), (255, 0, 0), (0, 255, 0)], dtype=np.uint8)
