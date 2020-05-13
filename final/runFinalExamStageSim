@@ -1,0 +1,1 @@
+pyrobot -s RosStageSimulator -w ./finalExam-201920-line1-v01.world -r RosStage.py -b BrainFinalExam.py

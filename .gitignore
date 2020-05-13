@@ -3,3 +3,4 @@ reconocimiento/output.avi
 *.pyc
 .idea/
 rsc/generado/*
+venv/

@@ -125,6 +125,30 @@ class Reconocimiento(object):
         return False
 
 
+    def analisis(self, img):
+        self.frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        centro , fig = (), []
+
+        # Creamos la prediccion y redimensionamos
+        predicted_image = self.segClf.predict(np.reshape(self.frame, (img.shape[0] * img.shape[1], img.shape[2])))
+
+        # Recuperamos las dimensiones
+        self.predImg = np.reshape(predicted_image, (img.shape[0], img.shape[1]))
+
+        salidas, centro = bif.existen_bifurcaciones(self.frame, self.predImg, centro)
+        if len(salidas) <= 1:
+            linImg = (self.predImg == 2).astype(np.uint8) * 255
+            _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+            if len(contours) > 0:
+                contours = max(contours, key=lambda x: len(x))
+                if not len(contours) < 50 and not self.__limit(contours):
+                    try:
+                        fig = self.clfORB.predict([self.__calc_orb(contours, linImg)])
+                    except Exception as e:
+                        pass
+        return fig
+
+
     def video_gererate(self, video):
         # Capturamos el video
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
