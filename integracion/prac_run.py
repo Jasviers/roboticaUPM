@@ -116,6 +116,7 @@ class Segmentador(object):
                   tv = round(giro/160.0,2)
                   fv = round(vel/170.0,2)
                   fv = fv - abs(0.3*tv)
+                  self.cont = self.cont-1
                else:
                   cv2.putText(self.frame, 'Cruce de {0} salidas'.format(len(salidas)), (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                   tv = round((160-self.centro[0])/160.0,2)
@@ -211,8 +212,39 @@ class Segmentador(object):
             punta = pm1 if self.distancia(pm1, (x,y)) < self.distancia(pm2, (x,y)) else pm2
             cv2.circle(self.frame, tuple(punta), 2, (0,0,255), -1)
 
-            p, q = self.full_line(punta, (x,y))
-            self.auxiliar = p if self.distancia(p, punta) < self.distancia(p, (x,y)) else q
+            rows,cols = self.frame.shape[:2]
+
+            [vx,vy,x,y] = cv2.fitLine(np.array([np.array(punta), np.array([x,y])]), cv2.DIST_L2,0,0.01,0.01)
+            lefty = int((-x*vy/vx) + y)
+            righty = int(((cols-x)*vy/vx)+y)
+
+            k=0
+            k=(0-y)/vy
+            xtop=(k*vx)+x
+            upper=int(xtop)
+
+            k=0
+            k=(rows-y)/vy
+            xlow=(k*vx)+x
+            lower=int(xlow)
+
+            corte=[]
+            if lefty>=0 and lefty<=rows-1: corte.append([0,lefty])
+            if upper>=0 and upper<=cols-1: corte.append([upper,0])
+            if righty>=0 and righty<=rows-1: corte.append([cols-1,righty])
+            if lower>=0 and lower<=cols-1: corte.append([lower,rows-1])
+
+            cv2.line(self.frame,tuple(corte[0]),tuple(corte[1]),(0,0,255),2)
+
+            #cv2.putText(self.frame, 'Velocidad = {0} '.format(fv), (15, 40), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+           
+            #p, q = self.full_line(punta, (x,y))
+            self.auxiliar = tuple(corte[0]) if self.distancia(tuple(corte[0]), punta) < self.distancia(tuple(corte[0]), (x,y)) else tuple(corte[1])
+            #self.auxiliar = self.aproxima(punta, self.auxiliar)
+            #print self.auxiliar
+            #self.auxiliar[0] = int(self.auxiliar[0])
+            #self.auxiliar[1] = int(self.auxiliar[1])
+            #print self.auxiliar
             cv2.circle(self.frame, tuple(self.auxiliar), 2, (0,0,255), -1)
 
             return True
@@ -220,6 +252,12 @@ class Segmentador(object):
 
     def slope(self, x0, y0, x1, y1):
        return float((y1-y0)/(x1-x0))
+    
+    def aproxima(self, a, b):
+       rows,cols = self.frame.shape[:2]
+       if b[0]<0 or b[0]>cols or b[1]<0 or b[1]>rows:
+          b = self.aproxima(a, (a+b)*0.5)
+       return b
 
 
     def full_line(self, a, b):
@@ -230,7 +268,7 @@ class Segmentador(object):
        p[1] = int(-(a[0] - p[0]) * slope + a[1])
        q[1] = int(-(b[0] - q[0]) * slope + b[1])
 
-       cv2.line(self.frame, tuple(p), tuple(q), (0,0,255))
+       #cv2.line(self.frame, tuple(p), tuple(q), (0,0,255))
        return p, q
 
     def __limit(self, points):
