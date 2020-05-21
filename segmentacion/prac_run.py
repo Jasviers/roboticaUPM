@@ -126,7 +126,7 @@ class Segmentador(object):
 
     def __line_identification(self):
         camino, defects = [], []
-        tv, fv = 1, 0
+        tv, fv = 0, 1
         salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
         if not salidas:
             fv = 0.0
@@ -140,8 +140,11 @@ class Segmentador(object):
         ret, thresh = cv2.threshold(linImg, 50, 255, 0)
         _, contours, _ = cv2.findContours(thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
         for cont in contours:  # identificamos el contorno que determina nuestro camino
-            if self.centro and cv2.pointPolygonTest(cont, self.centro, False) == 0.0 and len(cont) > 150:
+            if self.centro and cv2.pointPolygonTest(cont, self.centro, False) == 0.0:
                 camino = cont
+
+        if len(camino) < 150:
+            return True, tv, fv
 
         for point in salidas:
             cv2.circle(self.frame, point, 3, [255, 0, 0], -1)
@@ -252,61 +255,43 @@ class Segmentador(object):
             punta = pm1 if self.distancia(pm1, (x, y)) < self.distancia(pm2, (x, y)) else pm2
             cv2.circle(self.frame, tuple(punta), 2, (0, 0, 255), -1)
 
-            p, q = self.full_line(punta, (x, y))
-            self.auxiliar = p if self.distancia(p, punta) < self.distancia(p, (x, y)) else q
+            [vx, vy, x, y] = cv2.fitLine(np.array([np.array(punta), np.array([x, y])]), cv2.DIST_L2, 0, 0.01, 0.01)
+            lefty = int((-x * vy / vx) + y)
+            righty = int(((self.width - x) * vy / vx) + y)
+
+            k = (0 - y) / vy
+            xtop = (k * vx) + x
+            upper = int(xtop)
+
+            k = (self.height - y) / vy
+            xlow = (k * vx) + x
+            lower = int(xlow)
+
+            corte = []
+            if lefty >= 0 and lefty <= self.height - 1: corte.append([0, lefty])
+            if upper >= 0 and upper <= self.width - 1: corte.append([upper, 0])
+            if righty >= 0 and righty <= self.height - 1: corte.append([self.width - 1, righty])
+            if lower >= 0 and lower <= self.width - 1: corte.append([lower, self.height - 1])
+
+            cv2.line(self.frame, tuple(corte[0]), tuple(corte[1]), (0, 0, 255), 2)
+
+            if self.distancia(tuple(corte[0]), punta) < self.distancia(tuple(corte[0]), (x, y)):
+                self.auxiliar = tuple(corte[0])
+            else:
+                self.auxiliar = tuple(corte[1])
             cv2.circle(self.frame, tuple(self.auxiliar), 2, (0, 0, 255), -1)
 
             return True
 
 
-    def slope(self, x0, y0, x1, y1):
-        return float((y1-y0)/(x1-x0))
-
-
-    def full_line(self, a, b):
-        slope = self.slope(a[0], a[1], b[0], b[1])
-        vec = b - a
-        p = [0, 0]
-        q = [self.width, self.height]
-
-        p[1] = int(-(a[0] - p[0]) * slope + a[1])
-        q[1] = int(-(b[0] - q[0]) * slope + b[1])
-
-        if p[1] < 0:
-            p = [a[0] + ((0-a[1])*vec[0])/vec[1], 0]
-        elif p[1] > self.height:
-            p = [a[0] + ((self.height-a[1])*vec[0])/vec[1], self.height]
-        if q[1] < 0:
-            q = [a[0] + ((0-a[1])*vec[0])/vec[1], 0]
-        elif p[1] > self.height:
-            q = [a[0] + ((self.height-a[1])*vec[0])/vec[1], self.height]
-
-        #cv2.line(self.frame, tuple(p), tuple(q), (0,0,255))
-        return p, q
-
-
-    def full_line2(self, a, b):
-        vx, vy, x, y = cv2.fitLine(np.array([np.array(a), np.array(b)]), cv2.DIST_L2, 0, 0.01, 0.01)
-        p = [0, 0]
-        q = [self.width, self.height]
-        p[1] = int(((-x * vy) / vx) + y)
-        q[1] = int(((self.height - x)*vy / vx) + y)
-
-        if p[1] < 0:
-            p = [x + ((-y)*vy)/vy, 0]
-        elif p[1] > self.height:
-            p = [x + ((self.height - y) * vy) / vx, self.height]
-        if q[1] < 0:
-            q = [x + ((-y)*vy)/vy, 0]
-        elif p[1] > self.height:
-            q = [x + ((self.height - y) * vy) / vx, self.height]
-
-        # cv2.line(self.frame, tuple(p), tuple(q), (0,0,255))
-        return p, q
-
-
     def distancia(self, a, b):
         return math.sqrt((b[0] - a[0])**2 + (b[1] - a[1])**2)
+
+
+    def aproxima(self, a, b):
+       if b[0]<0 or b[0]>self.width or b[1]<0 or b[1]>self.height:
+          b = self.aproxima(a, (a+b)*0.5)
+       return b
 
 
     def __limit(self, points):

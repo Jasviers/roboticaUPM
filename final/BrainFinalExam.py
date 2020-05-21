@@ -92,9 +92,13 @@ class BrainFinalExam(Brain):
         hasLine, self.tv, self.fv = self.seg.analisis(self.cv_image)
 
         # Para rodear un objeto
-        if min([i.distance() for i in self.robot.range]) < 0.5:
+        frente = [self.robot.range[3].distance(),
+                  self.robot.range[4].distance()]
+        if min(*frente) < 0.35:
             print "Detecto objeto"
             self.object = True
+            self.move(0, 1)
+            return
 
         if self.object:
             if self.robot.range[5].distance() < 0.5:
@@ -105,12 +109,14 @@ class BrainFinalExam(Brain):
                 self.tv = 0.4
             elif self.robot.range[7].distance() < 0.5:
                 if hasLine:
+                    print("Hay linea")
                     self.object = False
                 self.fv = 0.4
                 self.tv = -0.5
             elif self.robot.range[7].distance() > 0.5 and self.robot.range[7].distance() < 0.8:
                 self.fv = 0.3
                 self.tv = -0.3
+
         self.move(self.fv, self.tv)
 
 
