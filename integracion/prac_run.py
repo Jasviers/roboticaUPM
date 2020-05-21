@@ -85,11 +85,12 @@ class Segmentador(object):
     def __line_identification(self):
         camino, defects= [], []
         tv, fv = 0, 0
-        salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
+        salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro, self.ultSalida)
         if not salidas:
            fv = 0.0
            giro = 160-self.ultSalida[0]
            tv = round(giro/160.0,2)
+           cv2.putText(self.frame, 'se perdio', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
            return tv,fv
         cv2.circle(self.frame, self.centro, 3, [0,0,255], -1)
 
@@ -111,10 +112,10 @@ class Segmentador(object):
             ret = self.__arrow_direction()
             if not ret and not self.auxiliar:
                if self.cont >0:
-                  vel = 170-self.ultCruce[1]
+                  vel = 240-self.ultCruce[1]
                   giro = 160-self.ultCruce[0]
                   tv = round(giro/160.0,2)
-                  fv = round(vel/170.0,2)
+                  fv = round(vel/240.0,2)
                   fv = fv - abs(0.3*tv)
                   self.cont = self.cont-1
                else:
@@ -138,10 +139,10 @@ class Segmentador(object):
                if izq:  cv2.putText(self.frame,'Tomamos la salida izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                elif der:  cv2.putText(self.frame,'Tomamos la salida derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
                else:  cv2.putText(self.frame,'Tomamos la salida central', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-               vel = 170-salida[1]
+               vel = 240-salida[1]
                giro = 160-salida[0]
                tv = round(giro/160.0,2)
-               fv = round(vel/170.0,2)
+               fv = round(vel/240.0,2)
                fv = fv - abs(0.3*tv)
                self.ultSalida = salida
                self.ultCruce = salida
@@ -156,30 +157,30 @@ class Segmentador(object):
           
            if dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))>0:
               cv2.putText(self.frame,'Curva hacia la izquierda', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              vel = 170-salidas[0][1]
+              vel = 240-salidas[0][1]
               giro = 160-salidas[0][0]
               tv = round(giro/160.0,2)
-              fv = round(vel/170.0,2)
+              fv = round(vel/240.0,2)
               fv = fv - abs(0.3*tv)
               self.ultSalida = salidas[0]
               if self.cont >0:self.cont = self.cont-1
 
            elif dis>2000 and ((salidas[0][0]-self.centro[0])*(far[1]-self.centro[1])-(salidas[0][1]-self.centro[1])*(far[0] -self.centro[0]))<0:
               cv2.putText(self.frame,'Curva hacia la derecha', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              vel = 170-salidas[0][1]
+              vel = 240-salidas[0][1]
               giro = 160-salidas[0][0]
               tv = round(giro/160.0,2)
-              fv = round(vel/170.0,2)
+              fv = round(vel/240.0,2)
               fv = fv - abs(0.3*tv)
               self.ultSalida = salidas[0]
               if self.cont >0:self.cont = self.cont-1
 
            else:
               cv2.putText(self.frame,'Recta', (15,20), cv2.FONT_HERSHEY_PLAIN, 1, (255,0,0))
-              vel = 170-salidas[0][1]
+              vel = 240-salidas[0][1]
               giro = 160-salidas[0][0]
               tv = round(giro/160.0,2)
-              fv = round(vel/170.0,2)
+              fv = round(vel/240.0,2)
               fv = fv - abs(0.3*tv)
               self.ultSalida = salidas[0]
               if self.cont >0:self.cont = self.cont-1
@@ -221,12 +222,14 @@ class Segmentador(object):
             k=0
             k=(0-y)/vy
             xtop=(k*vx)+x
-            upper=int(xtop)
+            if xtop<10000 and xtop>-10000:upper=int(xtop)
+            else: upper=-1
 
             k=0
             k=(rows-y)/vy
             xlow=(k*vx)+x
-            lower=int(xlow)
+            if xlow<10000 and xlow>-10000:lower=int(xlow)
+            else: lower=-1
 
             corte=[]
             if lefty>=0 and lefty<=rows-1: corte.append([0,lefty])
@@ -236,15 +239,9 @@ class Segmentador(object):
 
             cv2.line(self.frame,tuple(corte[0]),tuple(corte[1]),(0,0,255),2)
 
-            #cv2.putText(self.frame, 'Velocidad = {0} '.format(fv), (15, 40), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
            
-            #p, q = self.full_line(punta, (x,y))
             self.auxiliar = tuple(corte[0]) if self.distancia(tuple(corte[0]), punta) < self.distancia(tuple(corte[0]), (x,y)) else tuple(corte[1])
-            #self.auxiliar = self.aproxima(punta, self.auxiliar)
-            #print self.auxiliar
-            #self.auxiliar[0] = int(self.auxiliar[0])
-            #self.auxiliar[1] = int(self.auxiliar[1])
-            #print self.auxiliar
+
             cv2.circle(self.frame, tuple(self.auxiliar), 2, (0,0,255), -1)
 
             return True
