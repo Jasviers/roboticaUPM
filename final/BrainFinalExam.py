@@ -27,12 +27,17 @@ class BrainFinalExam(Brain):
 
 
     def setup(self):
+        self.object = False
+        self.fv = 0
+        self.tv = 0
         self.image_sub = rospy.Subscriber("/image", Image, self.callback)
         self.bridge = CvBridge()
         self.seg = segment.Segmentador()
         self.seg.clf_load()
         self.rec = recon.Reconocimiento()
         self.rec.clf_load()
+        self.lastEtiq = -1
+        self.stop = False
 
 
     def callback(self, data):
@@ -44,6 +49,9 @@ class BrainFinalExam(Brain):
 
 
     def step(self):
+
+        if self.stop:
+            return
         # take the last image received from the camera and convert it into
         # opencv format
         try:
@@ -53,22 +61,25 @@ class BrainFinalExam(Brain):
             print(e)
 
         fig = self.rec.analisis(self.cv_image)
-        print("Paso por aqui y fig tiene {} con condicion {}".format(fig, fig != []))
-        if fig:
+        if fig in [0, 1, 2, 3]:
             cv2.putText(self.cv_image, 'Identificado ORB {} '.format(self.rec.etiquetas[fig[0]]), (15, 40),
                         cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+            if fig[0] == 3 and self.lastEtiq == 3:
+                self.stop = True
+            else:
+                self.lastEtiq = fig[0]
 
         # display the image using opencv
         cv2.imshow("Stage Camera Image", self.cv_image)
         cv2.waitKey(1)
 
         #    # use pygame to display the image
-        surface = pygame.display.set_mode(self.cv_image.shape[-2::-1])
-        pygimage = pygame.image.frombuffer(cv2.cvtColor(self.cv_image,
-        cv2.COLOR_BGR2RGB),
-        self.cv_image.shape[-2::-1],'RGB')
-        surface.blit(pygimage, (0,0))
-        pygame.display.flip() # update the display
+        #surface = pygame.display.set_mode(self.cv_image.shape[-2::-1])
+        #pygimage = pygame.image.frombuffer(cv2.cvtColor(self.cv_image,
+        #cv2.COLOR_BGR2RGB),
+        #self.cv_image.shape[-2::-1], 'RGB')
+        #surface.blit(pygimage, (0, 0))
+        #pygame.display.flip() # update the display
 
         # write the image to a file, for debugging etc.
         # cv2.imwrite("test-file.jpg",self.cv_image)
@@ -76,20 +87,31 @@ class BrainFinalExam(Brain):
         # Here you should process the image from the camera and calculate
         # your control variable(s), for now we will just give the controller
         # some 'fixed' values so that it will do something.
-        lineDistance = .5
-        hasLine = 1
 
         # A trivial on-off controller
-        if (hasLine):
-            if (lineDistance > self.NO_ERROR):
-                self.move(self.FULL_FORWARD, 0)
-            elif (lineDistance < self.NO_ERROR):
-                self.move(self.FULL_FORWARD, self.HARD_RIGHT)
-            else:
-                self.move(self.FULL_FORWARD, self.NO_TURN)
-        else:
-            # if we can't see the line we just stop, this isn't very smart
-            self.move(self.NO_FORWARD, self.NO_TURN)
+        hasLine, self.tv, self.fv = self.seg.analisis(self.cv_image)
+
+        # Para rodear un objeto
+        if min([i.distance() for i in self.robot.range]) < 0.5:
+            print "Detecto objeto"
+            self.object = True
+
+        if self.object:
+            if self.robot.range[5].distance() < 0.5:
+                self.fv = 0
+                self.tv = 0.5
+            elif self.robot.range[6].distance() < 0.5:
+                self.fv = 0.4
+                self.tv = 0.4
+            elif self.robot.range[7].distance() < 0.5:
+                if hasLine:
+                    self.object = False
+                self.fv = 0.4
+                self.tv = -0.5
+            elif self.robot.range[7].distance() > 0.5 and self.robot.range[7].distance() < 0.8:
+                self.fv = 0.3
+                self.tv = -0.3
+        self.move(self.fv, self.tv)
 
 
 def INIT(engine):

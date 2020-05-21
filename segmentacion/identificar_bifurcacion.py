@@ -138,10 +138,8 @@ def existen_bifurcaciones(img, imgMrk, centro):
    elif bordes:
       dist = math.sqrt(pow((bordes[0][0][0]-centro[0]), 2)+pow((bordes[0][0][1]-centro[1]), 2))
       caminoaprox = bordes[0]
-      for i in range(len(bordes)): # Si existe un centro previo
-         cont = bordes[i]
-         for e in range(len(cont)):
-            point = cont[e]
+      for cont in bordes: # Si existe un centro previo
+         for point in cont:
             if math.sqrt(pow((point[0]-centro[0]),2)+pow((point[1]-centro[1]),2)) < dist:
                dist = math.sqrt(pow((point[0]-centro[0]),2)+pow((point[1]-centro[1]),2))
                caminoaprox = cont
