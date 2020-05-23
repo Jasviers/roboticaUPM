@@ -32,7 +32,7 @@ class Reconocimiento(object):
             sys.exit(-1)
 
 
-    def  __orb(self, trainPath):
+    def  orb(self, trainPath):
         etiq = 0
         self.size = len(os.listdir(trainPath))
         data, lbls = np.empty((self.size, 256)), np.empty(self.size)
@@ -91,7 +91,7 @@ class Reconocimiento(object):
     def clf_create_orb(self, trainPath):
         # Creamos el clasificador
         self.clfORB = neig.KNeighborsClassifier(1, metric="euclidean")
-        self.clfORB.fit(*self.__orb(trainPath))
+        self.clfORB.fit(*self.orb(trainPath))
         joblib.dump(self.clfORB, '../clasificadores/reconocimientoORB.pkl')
 
 
@@ -108,7 +108,7 @@ class Reconocimiento(object):
             clf.fit(data[train], lbls[train])
             acc += (int(clf.predict(data[test])[0]) != int(lbls[test][0]))
         print("Error con momentos de hu: {} de {}".format(acc, self.size))
-        data, lbls = self.__orb(trainPath)
+        data, lbls = self.orb(trainPath)
         acc = 0
         for train, test in LeaveOneOut().split(data):
             clf = neig.KNeighborsClassifier(1, metric="euclidean")
@@ -125,7 +125,7 @@ class Reconocimiento(object):
         return False
 
 
-    def analisis(self, img):
+    def analisis(self, img, ultSalida):
         self.frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         centro , fig = (), []
 
@@ -135,7 +135,7 @@ class Reconocimiento(object):
         # Recuperamos las dimensiones
         self.predImg = np.reshape(predicted_image, (img.shape[0], img.shape[1]))
 
-        salidas, centro = bif.existen_bifurcaciones(self.frame, self.predImg, centro)
+        salidas, centro = bif.existen_bifurcaciones(self.frame, self.predImg, centro, ultSalida)
         if len(salidas) <= 1:
             linImg = (self.predImg == 2).astype(np.uint8) * 255
             _, contours, _ = cv2.findContours(linImg, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)

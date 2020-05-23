@@ -60,19 +60,6 @@ class BrainFinalExam(Brain):
         except CvBridgeError as e:
             print(e)
 
-        fig = self.rec.analisis(self.cv_image)
-        if fig in [0, 1, 2, 3]:
-            cv2.putText(self.cv_image, 'Identificado ORB {} '.format(self.rec.etiquetas[fig[0]]), (15, 40),
-                        cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
-            if fig[0] == 3 and self.lastEtiq == 3:
-                self.stop = True
-            else:
-                self.lastEtiq = fig[0]
-
-        # display the image using opencv
-        cv2.imshow("Stage Camera Image", self.cv_image)
-        cv2.waitKey(1)
-
         #    # use pygame to display the image
         #surface = pygame.display.set_mode(self.cv_image.shape[-2::-1])
         #pygimage = pygame.image.frombuffer(cv2.cvtColor(self.cv_image,
@@ -90,6 +77,19 @@ class BrainFinalExam(Brain):
 
         # A trivial on-off controller
         hasLine, self.tv, self.fv = self.seg.analisis(self.cv_image)
+
+        fig = self.rec.analisis(self.cv_image, self.seg.ultSalida)
+        if fig in [0, 1, 2, 3]:
+            cv2.putText(self.cv_image, 'Identificado ORB {} '.format(self.rec.etiquetas[fig[0]]), (15, 40),
+                        cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+            if fig[0] == 3 and self.lastEtiq == 3:
+                self.stop = True
+            else:
+                self.lastEtiq = fig[0]
+
+        # display the image using opencv
+        cv2.imshow("Stage Camera Image", self.cv_image)
+        cv2.waitKey(1)
 
         # Para rodear un objeto
         frente = [self.robot.range[3].distance(),

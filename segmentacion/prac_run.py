@@ -127,7 +127,7 @@ class Segmentador(object):
     def __line_identification(self):
         camino, defects = [], []
         tv, fv = 0, 1
-        salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro)
+        salidas, self.centro = bif.existen_bifurcaciones(self.frame, self.predImg, self.centro, self.ultSalida)
         if not salidas:
             fv = 0.0
             giro = 160 - self.ultSalida[0]
@@ -157,7 +157,7 @@ class Segmentador(object):
             ret = self.__arrow_direction()
             if not ret and not self.auxiliar:
                 if self.cont > 0:
-                    vel = 170 - self.ultCruce[1]
+                    vel = 240 - self.ultCruce[1]
                     giro = 160 - self.ultCruce[0]
                     tv = round(giro / 160.0, 2)
                     fv = round(vel / 170.0, 2)
@@ -189,7 +189,7 @@ class Segmentador(object):
                 else:
                     cv2.putText(self.frame, 'Tomamos la salida central', (15, 20), cv2.FONT_HERSHEY_PLAIN, 1,
                                 (255, 0, 0))
-                vel = 170 - salida[1]
+                vel = 240 - salida[1]
                 giro = 160 - salida[0]
                 tv = round(giro / 160.0, 2)
                 fv = round(vel / 170.0, 2)
