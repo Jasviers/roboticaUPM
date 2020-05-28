@@ -31,8 +31,8 @@ class Segmentador(object):
         data, lbls = None, None
 
         for i, j in zip(sorted(os.listdir(imgPath)), sorted(os.listdir(mkImgPath))):
-            self.imNp = cv2.cvtColor(imread(imgPath+i), cv2.COLOR_BGR2RGB)
-            self.markImg = cv2.cvtColor(imread(mkImgPath+j), cv2.COLOR_BGR2RGB)
+            self.imNp = cv2.cvtColor(imread(imgPath+'/'+i), cv2.COLOR_BGR2RGB)
+            self.markImg = cv2.cvtColor(imread(mkImgPath+'/'+j), cv2.COLOR_BGR2RGB)
 
             # Preparo los datos de entrenamiento
             # saco todos los puntos marcados en rojo/verde/azul
@@ -54,11 +54,11 @@ class Segmentador(object):
 
        # Entrenemos el modelo
         self.clf.fit(data, lbls)
-        joblib.dump(self.clf, '../clasificadores/segmentacion.pkl')
+        joblib.dump(self.clf, '/home/robotica/roboticaUPM-master/clasificadores/segmentacion.pkl')
 
 
     def clf_load(self):
-        self.clf = joblib.load('../clasificadores/segmentacion.pkl')
+        self.clf = joblib.load('/home/robotica/roboticaUPM-master/clasificadores/segmentacion.pkl')
 
 
     def video_create(self, video):
@@ -119,7 +119,6 @@ class Segmentador(object):
         hasLine, tv, fv = self.__line_identification()
 
         cv2.waitKey(1)
-        cv2.imshow("Segmentacion Euclid", self.frame)
 
         return hasLine, tv, fv
 
@@ -133,8 +132,7 @@ class Segmentador(object):
             giro = 160 - self.ultSalida[0]
             tv = round(giro / 160.0, 2)
             return False, tv, fv
-        if self.centro:
-            cv2.circle(self.frame, self.centro, 3, [0, 0, 255], -1)
+
 
         linImg = (self.predImg == 1).astype(np.uint8) * 255
         ret, thresh = cv2.threshold(linImg, 50, 255, 0)
@@ -146,8 +144,6 @@ class Segmentador(object):
         if len(camino) < 150:
             return True, tv, fv
 
-        for point in salidas:
-            cv2.circle(self.frame, point, 3, [255, 0, 0], -1)
 
         if len(camino) > 0:
             cv2.drawContours(self.frame, camino, -1, (0, 255, 0), 1)
@@ -163,8 +159,6 @@ class Segmentador(object):
                     fv = round(vel / 170.0, 2)
                     fv = fv - abs(0.3 * tv)
                 else:
-                    cv2.putText(self.frame, 'Cruce de {0} salidas'.format(len(salidas)), (15, 20),
-                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
                     tv = round((160 - self.centro[0]) / 160.0, 2)
                     fv = 0.5
                     self.ultSalida = salidas[0]
@@ -175,20 +169,6 @@ class Segmentador(object):
                     if self.distancia(i, self.auxiliar) < dist:
                         salida = i
                         dist = self.distancia(i, self.auxiliar)
-                cv2.circle(self.frame, salida, 3, [0, 255, 0], -1)
-                izq, der = True, True
-                for caminos in salidas:
-                    if salida[0] > caminos[0]:  izq = False
-                    if salida[0] < caminos[0]:  der = False
-                if izq:
-                    cv2.putText(self.frame, 'Tomamos la salida izquierda', (15, 20), cv2.FONT_HERSHEY_PLAIN, 1,
-                                (255, 0, 0))
-                elif der:
-                    cv2.putText(self.frame, 'Tomamos la salida derecha', (15, 20), cv2.FONT_HERSHEY_PLAIN, 1,
-                                (255, 0, 0))
-                else:
-                    cv2.putText(self.frame, 'Tomamos la salida central', (15, 20), cv2.FONT_HERSHEY_PLAIN, 1,
-                                (255, 0, 0))
                 vel = 240 - salida[1]
                 giro = 160 - salida[0]
                 tv = round(giro / 160.0, 2)
@@ -205,30 +185,12 @@ class Segmentador(object):
                     far = tuple(camino[f][0])
                     dis = d
 
-            if dis > 2000 and (
-                    (salidas[0][0] - self.centro[0]) * (far[1] - self.centro[1]) - (salidas[0][1] - self.centro[1]) * (
-                    far[0] - self.centro[0])) > 0:
-                cv2.putText(self.frame, 'Curva hacia la izquierda', (15, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
-
-            elif dis > 2000 and (
-                    (salidas[0][0] - self.centro[0]) * (far[1] - self.centro[1]) - (salidas[0][1] - self.centro[1]) * (
-                    far[0] - self.centro[0])) < 0:
-                cv2.putText(self.frame, 'Curva hacia la derecha', (15, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
-
-            else:
-                cv2.putText(self.frame, 'Recta', (15, 20), cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
-
             vel = 170 - salidas[0][1]
             giro = 160 - salidas[0][0]
             tv = round(giro / 160.0, 2)
             fv = round(vel / 170.0, 2)
             fv = fv - abs(0.3 * tv)
             self.ultSalida = salidas[0]
-            if self.cont > 0: self.cont -= 1
-            cv2.putText(self.frame, 'Velocidad de giro = {0} '.format(tv), (15, 60),
-                        cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
-            cv2.putText(self.frame, 'Velocidad = {0} '.format(fv), (15, 40), cv2.FONT_HERSHEY_PLAIN,
-                        1, (255, 0, 0))
 
         return True, tv, fv
 
@@ -242,7 +204,6 @@ class Segmentador(object):
                 return False
 
             caja = np.int0(cv2.boxPoints(cv2.fitEllipse(contours)))
-            # cv2.drawContours(self.frame, [caja], -1, (255,0,0), 3)
 
             # Calculamos los puntos medios del rectangulo
             pm1 = (caja[3] + caja[0]) / 2
@@ -251,9 +212,7 @@ class Segmentador(object):
             moments = cv2.moments(contours)
             x = int(moments['m10'] / moments['m00'])
             y = int(moments['m01'] / moments['m00'])
-            cv2.circle(self.frame, (x, y), 2, (0, 255, 0), -1)
             punta = pm1 if self.distancia(pm1, (x, y)) < self.distancia(pm2, (x, y)) else pm2
-            cv2.circle(self.frame, tuple(punta), 2, (0, 0, 255), -1)
 
             [vx, vy, x, y] = cv2.fitLine(np.array([np.array(punta), np.array([x, y])]), cv2.DIST_L2, 0, 0.01, 0.01)
             lefty = int((-x * vy / vx) + y)
@@ -261,11 +220,13 @@ class Segmentador(object):
 
             k = (0 - y) / vy
             xtop = (k * vx) + x
-            upper = int(xtop)
+            if math.isinf(xtop): upper = 99999999
+            else: upper = int(xtop)
 
             k = (self.height - y) / vy
             xlow = (k * vx) + x
-            lower = int(xlow)
+            if math.isinf(xlow): lower = 99999999
+            else: lower = int(xlow)
 
             corte = []
             if lefty >= 0 and lefty <= self.height - 1: corte.append([0, lefty])
@@ -273,13 +234,11 @@ class Segmentador(object):
             if righty >= 0 and righty <= self.height - 1: corte.append([self.width - 1, righty])
             if lower >= 0 and lower <= self.width - 1: corte.append([lower, self.height - 1])
 
-            cv2.line(self.frame, tuple(corte[0]), tuple(corte[1]), (0, 0, 255), 2)
 
             if self.distancia(tuple(corte[0]), punta) < self.distancia(tuple(corte[0]), (x, y)):
                 self.auxiliar = tuple(corte[0])
             else:
                 self.auxiliar = tuple(corte[1])
-            cv2.circle(self.frame, tuple(self.auxiliar), 2, (0, 0, 255), -1)
 
             return True
 
