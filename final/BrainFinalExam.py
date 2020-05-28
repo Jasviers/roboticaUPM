@@ -8,6 +8,7 @@ from cv_bridge import CvBridge, CvBridgeError
 import pygame
 import segmentacion.prac_run as segment
 import reconocimiento.reconocimiento as recon
+import os
 
 
 class BrainFinalExam(Brain):
@@ -33,9 +34,15 @@ class BrainFinalExam(Brain):
         self.image_sub = rospy.Subscriber("/image", Image, self.callback)
         self.bridge = CvBridge()
         self.seg = segment.Segmentador()
-        self.seg.clf_load()
+        if os.path.exists('/home/robotica/roboticaUPM/clasificadores/segmentacion.pkl'):
+            self.seg.clf_load()
+        else:
+            self.seg.clf_create("/home/robotica/roboticaUPM/rsc/imgs_seg/", "/home/robotica/roboticaUPM/rsc/imgsMk_seg/")
         self.rec = recon.Reconocimiento()
-        self.rec.clf_load()
+        if os.path.exists('/home/robotica/roboticaUPM/clasificadores/reconomientoORB.pkl'):
+            self.rec.clf_load_orb()
+        else:
+            self.rec.clf_create_orb("/home/robotica/roboticaUPM/rsc/marcas/")
 
 
     def callback(self, data):

@@ -85,19 +85,27 @@ class Reconocimiento(object):
         # Creamos el clasificador
         self.clfHu = neig.KNeighborsClassifier(1, metric="euclidean")
         self.clfHu.fit(*self.__hum(trainPath))
-        joblib.dump(self.clfHu, '../clasificadores/reconocimientoHu.pkl')
+        joblib.dump(self.clfHu, '/home/robotica/roboticaUPM/clasificadores/reconocimientoHu.pkl')
 
 
     def clf_create_orb(self, trainPath):
         # Creamos el clasificador
         self.clfORB = neig.KNeighborsClassifier(1, metric="euclidean")
         self.clfORB.fit(*self.orb(trainPath))
-        joblib.dump(self.clfORB, '../clasificadores/reconocimientoORB.pkl')
+        joblib.dump(self.clfORB, '/home/robotica/roboticaUPM/clasificadores/reconocimientoORB.pkl')
 
 
     def clf_load(self):
-        self.clfHu = joblib.load('../clasificadores/reconocimientoHu.pkl')
-        self.clfORB = joblib.load('../clasificadores/reconocimientoORB.pkl')
+        self.clf_load_hum()
+        self.clf_load_orb()
+
+
+    def clf_load_orb(self):
+        self.clfORB = joblib.load('/home/robotica/roboticaUPM/clasificadores/reconocimientoORB.pkl')
+
+
+    def clf_load_hum(self):
+        self.clfHu = joblib.load('/home/robotica/roboticaUPM/clasificadores/reconocimientoHu.pkl')
 
 
     def kfolds(self, trainPath):
