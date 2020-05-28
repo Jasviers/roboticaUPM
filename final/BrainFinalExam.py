@@ -36,8 +36,6 @@ class BrainFinalExam(Brain):
         self.seg.clf_load()
         self.rec = recon.Reconocimiento()
         self.rec.clf_load()
-        self.lastEtiq = -1
-        self.stop = False
 
 
     def callback(self, data):
@@ -80,12 +78,10 @@ class BrainFinalExam(Brain):
 
         fig = self.rec.analisis(self.cv_image, self.seg.ultSalida)
         if fig in [0, 1, 2, 3]:
-            cv2.putText(self.cv_image, 'Identificado ORB {} '.format(self.rec.etiquetas[fig[0]]), (15, 40),
-                        cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
-            if fig[0] == 3 and self.lastEtiq == 3:
-                self.stop = True
-            else:
-                self.lastEtiq = fig[0]
+            print('Identificado ORB {} '.format(self.rec.etiquetas[fig[0]]))
+            # cv2.putText(self.cv_image, 'Identificado ORB {} '.format(self.rec.etiquetas[fig[0]]), (15, 40),
+            #            cv2.FONT_HERSHEY_PLAIN, 1, (255, 0, 0))
+
 
         # display the image using opencv
         cv2.imshow("Stage Camera Image", self.cv_image)
@@ -95,7 +91,6 @@ class BrainFinalExam(Brain):
         frente = [self.robot.range[3].distance(),
                   self.robot.range[4].distance()]
         if min(*frente) < 0.35:
-            print "Detecto objeto"
             self.object = True
             self.move(0, 1)
             return
@@ -108,16 +103,16 @@ class BrainFinalExam(Brain):
                 self.fv = 0.4
                 self.tv = 0.4
             elif self.robot.range[7].distance() < 0.5:
-                if hasLine:
-                    print("Hay linea")
-                    self.object = False
                 self.fv = 0.4
                 self.tv = -0.5
+                self.object = not hasLine
+
             elif self.robot.range[7].distance() > 0.5 and self.robot.range[7].distance() < 0.8:
                 self.fv = 0.3
                 self.tv = -0.3
 
         self.move(self.fv, self.tv)
+        return
 
 
 def INIT(engine):
